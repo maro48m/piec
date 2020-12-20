@@ -2,6 +2,7 @@ import network
 import utime
 import json
 import ntptime
+import os
 
 config = {"wifi_ssid": "zrodlo",
           "wifi_passwd": "LothLorien.#13",
@@ -104,3 +105,7 @@ def settime():
     if config["ntp"] == 1:
         ntptime.host = config["ntp_server"]
         ntptime.settime()
+
+
+def clean():
+    os.remove('main.py')

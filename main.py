@@ -6,12 +6,11 @@ import gc
 import select
 import max7219
 
+
 class piec:
     def __init__(self):
         self.servo_pin = Pin(4)
-        self.button = Pin(5, Pin.IN, Pin.PULL_UP)
-        self.btn_val = 1
-        self.servo = PWM(self.servo_pin, freq=50)
+        self.servo = PWM(self.servo_pin, freq=50,)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         self.lh = 0
@@ -19,22 +18,25 @@ class piec:
         self.time_update = 0
 
         self.spi = SPI(1, baudrate=10000000, polarity=0, phase=0)
-        self.display_pin = Pin(12)
+        self.display_pin = Pin(15, Pin.OUT)
         self.display = max7219.Matrix8x8(self.spi, self.display_pin, 1)
         self.display.brightness(0)
         self.display.fill(0)
         self.display.show()
 
+        self.button = Pin(5, Pin.IN, Pin.PULL_UP)
+        self.btn_val = 1
+
         self.joy_val = 500
         self.edit_temp = 0
 
-        self.state = 0  # 0-sleep, 1 - display, 2 - edit
+        self.state = 1  # 0-sleep, 1 - display, 2 - edit
         self.edit_state = 0
         self.adc = ADC(0)
 
         utils.wifi_disconnect()
 
-    def led_write_number(self, val, where=1,dots=False):
+    def led_write_number(self, val, where=1, dots=False):
         d1 = int(val / 10)
         d2 = int(val % 10)
         digits = {1: 48, 2: 109, 3: 121, 4: 51, 5: 91, 6: 95, 7: 112, 8: 127, 9: 123, 0: 126}
@@ -71,8 +73,9 @@ class piec:
         utils.set_config("last_temp_update", czas)
         print('temp:', temp)
         self.servo.duty(self.parse_temp_to_servo(temp))
-        # if self.state > 0:
-        self.led_write_number(temp, 1, False)
+        utime.sleep_ms(150)
+        if self.state > 0:
+          self.led_write_number(temp, 1, False)
 
     def save_times(self, times):
         tms = {}
@@ -189,14 +192,16 @@ class piec:
             self.edit_temp = int(utils.get_config('piec_temperature', '0'))
         if self.state in (2, 3, 4, 5):
             val = self.adc.read()
-            if self.joy_val < 900 <= val:
+            if val >= 900:
                 self.edit_temp += 1
                 print('joy up', self.joy_val, val)
                 self.led_write_number(self.edit_temp, 1, False)
-            if self.joy_val > 200 >= val:
+                utime.sleep_ms(150)
+            if  val <= 200:
                 self.edit_temp -= 1
                 print('joy down', self.joy_val, val)
                 self.led_write_number(self.edit_temp, 1, False)
+                utime.sleep_ms(150)
             self.joy_val = val
 
     def handle_button(self, pin):
@@ -220,7 +225,6 @@ class piec:
                 self.display.show()
         self.btn_val = pin.value()
 
-
     def init(self):
         if utils.wifi_connected() is False:
             print("Load config")
@@ -239,35 +243,32 @@ class piec:
                 except OSError as err:
                     pass
 
-
     def run(self):
         while True:
-            # if state < 2:
-            self.init()
-            if gc.mem_free() < 20000:
-                gc.collect()
-            if utils.wifi_connected():
-                r, w, err = select.select((self.sock,), (), (), 1)
-                if r:
-                    for readable in r:
-                        try:
-                            conn, addr = self.sock.accept()
-                            self.handle_web(conn, addr)
-                        except OSError as e:
-                            conn.close()
-            self.handle_timer()
-            # else:
-            #     if edit_state % 2 == 0:
-            #         display._write(5, 79)
-            #     else:
-            #         display._write(5, 0)
-            #     edit_state += 1
-            #     if edit_state > 100:
-            #         edit_state = 0
+            if self.state < 2:
+                self.init()
+                if utils.wifi_connected():
+                    r, w, err = select.select((self.sock,), (), (), 1)
+                    if r:
+                        for readable in r:
+                            try:
+                                conn, addr = self.sock.accept()
+                                self.handle_web(conn, addr)
+                            except OSError as e:
+                                conn.close()
+                self.handle_timer()
+            else:
+                if self.edit_state % 2 == 0:
+                    self.display._write(5, 79)
+                else:
+                    self.display._write(5, 0)
+                self.edit_state += 1
+                if self.edit_state > 100:
+                    self.edit_state = 0
 
-            # handle_joystick()
-            # handle_button(button)
+            self.handle_joystick()
+            self.handle_button(self.button)
 
 
 p = piec()
-
+p.run()
