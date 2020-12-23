@@ -213,16 +213,15 @@ class piec:
             if self.state == 2:
                 self.edit_temp = int(utils.get_config('piec_temperature', '0'))
             if self.state == 3:
-                self.state = 0
+                self.state = 1
                 print('SET TEMP 1', self.edit_temp)
                 curr_temp = int(utils.get_config('piec_temperature', '0'))
                 if self.edit_temp != curr_temp:
                     print('SAVE TEMP!')
                     utils.set_config('piec_temperature', int(self.edit_temp))
                     self.set_temperature(int(self.edit_temp))
+                    self.led_write_number(curr_temp, 1, False)
                 self.edit_temp = 0
-                self.display.fill(0)
-                self.display.show()
         self.btn_val = pin.value()
 
     def init(self):
