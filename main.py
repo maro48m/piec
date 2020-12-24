@@ -5,12 +5,13 @@ import usocket as socket
 import gc
 import select
 import max7219
+import sensors
 
 
 class piec:
     def __init__(self):
-        self.servo_pin = Pin(4)
-        self.servo = PWM(self.servo_pin, freq=50,)
+        self.servo_pin = Pin(int(utils.get_config("servo_pin", 4)))
+        self.servo = PWM(self.servo_pin, freq=50)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         self.lh = 0
@@ -18,13 +19,13 @@ class piec:
         self.time_update = 0
 
         self.spi = SPI(1, baudrate=10000000, polarity=0, phase=0)
-        self.display_pin = Pin(15, Pin.OUT)
+        self.display_pin = Pin(int(utils.get_config("wyswietlacz_pin", 15)), Pin.OUT)
         self.display = max7219.Matrix8x8(self.spi, self.display_pin, 1)
         self.display.brightness(0)
         self.display.fill(0)
         self.display.show()
 
-        self.button = Pin(5, Pin.IN, Pin.PULL_UP)
+        self.button = Pin(utils.get_config("przycisk_pin", 5), Pin.IN, Pin.PULL_UP)
         self.btn_val = 1
 
         self.joy_val = 500
@@ -34,48 +35,63 @@ class piec:
         self.edit_state = 0
         self.adc = ADC(0)
 
+        self.termometr = sensors.sensory()
+
         utils.wifi_disconnect()
 
-    def led_write_number(self, val, where=1, dots=False):
-        d1 = int(val / 10)
-        d2 = int(val % 10)
+    def led_write_number(self, val, move=0, dots=[]):
         digits = {1: 48, 2: 109, 3: 121, 4: 51, 5: 91, 6: 95, 7: 112, 8: 127, 9: 123, 0: 126}
-        v1 = digits[d1]
-        v2 = digits[d2]
+        values = []
+        print(val)
+        print(values)
+        while val > 0:
+            d = int(val % 10)
+            print("d",d)
+            val = int(val / 10)
+            print("val",val)
+            v = digits[d]
+            values.append(v)
+            print("values",values)
+        values.reverse()
+        pos = 8 - move
+        print(values)
+        i = len(values)
+        for d in values:
+            print('pos',pos)
+            if dots.count(i) > 0:
+                d += 128
 
-        if where == 1:
-            dp1 = 8
-            dp2 = 7
-        else:
-            dp1 = 2
-            dp2 = 1
-
-        if dots is True:
-            v1 += 128
-            v2 += 128
-
-        self.display._write(dp1, v1)  # 1
-        self.display._write(dp2, v2)  # 2
+            self.display._write(pos, d)
+            pos -= 1
+            i -= 1
 
     def parse_temp_to_servo(self, temp):
-        min_servo = int(utils.get_config("servo_min", "30"))
-        max_servo = int(utils.get_config("servo_max", "115"))
-        servo_pos = utils.val_map(temp, 10, 90, min_servo, max_servo)
+        min_servo = int(utils.get_config("servo_min", 37))
+        max_servo = int(utils.get_config("servo_max", 115))
+        servo_pos = utils.val_map(temp, 30, 90, min_servo, max_servo)
         return servo_pos
 
-    def set_temperature(self, temp):
+    def set_temperature(self, new_temp):
         y = utime.localtime(utime.time() + 1 * 3600)[0]
         m = utime.localtime(utime.time() + 1 * 3600)[1]
         d = utime.localtime(utime.time() + 1 * 3600)[2]
         h = utime.localtime(utime.time() + 1 * 3600)[3]
         mm = utime.localtime(utime.time() + 1 * 3600)[4]
         czas = "%s-%s-%s %s:%s" % (str(y), str(m), str(d), str(h), str(mm))
-        utils.set_config("last_temp_update", czas)
-        print('temp:', temp)
-        self.servo.duty(self.parse_temp_to_servo(temp))
+        utils.set_config("piec_ostatnia_aktualizacja", czas)
+        curr_temp = int(utils.get_config("piec_temperatura"))
+
+        if curr_temp < new_temp <= (int(utils.get_config("piec_temperatura_max", 90)) - 5):
+            set_temp = new_temp + 5
+            self.servo.duty(self.parse_temp_to_servo(set_temp))
+            utime.sleep_ms(1000)
+
+        self.servo.duty(self.parse_temp_to_servo(new_temp))
+        utils.set_config("piec_temperatura", int(new_temp))
         utime.sleep_ms(150)
+
         if self.state > 0:
-          self.led_write_number(temp, 1, False)
+            self.led_write_number(new_temp)
 
     def save_times(self, times):
         tms = {}
@@ -87,22 +103,20 @@ class piec:
                 key = r.split(' - ')[0]
                 val = r.split(' - ')[1]
                 tms[key] = int(val)
-        print('times to save:', tms)
-        utils.set_config("piec_times", tms)
+        utils.set_config("piec_czasy", tms)
 
     def web_save(self, temp, times):
         tmp = int(temp)
-        curr_tmp = int(utils.get_config('piec_temperature', tmp))
+        curr_tmp = int(utils.get_config("piec_temperatura", tmp))
         if tmp != curr_tmp:
-            utils.set_config('piec_temperature', tmp, False)
-            print('set 1')
             self.set_temperature(int(tmp))
         self.save_times(times)
 
     def web_template(self):
-        temp = utils.get_config('piec_temperature')
-        times = utils.get_config("piec_times", {})
-        last = utils.get_config('last_temp_update', '')
+        temp = utils.get_config("piec_temperatura")
+        times = utils.get_config("piec_czasy", {})
+        last = utils.get_config("piec_ostatnia_aktualizacja", '')
+        temperatura = self.termometr.pomiar_temperatury()
         tm = ''
         y = utime.localtime(utime.time() + 1 * 3600)[0]
         m = utime.localtime(utime.time() + 1 * 3600)[1]
@@ -119,9 +133,10 @@ class piec:
 <body>
   <h3>Kontrola pieca</h3>
   <p>Czas na urządzeniu: %s-%s-%s %s:%s</p>
+  <p>Pomiar temperatury: %s</p>
   <p>Ostatnia zmiana temperatury: %s</p>
   <form action="/save" method="get">
-      <p>Temperatura:<br><input type="number" name="temp" max="90" min="10" value="%s"></p>
+      <p>Temperatura ustawiona:<br><input type="number" name="temp" max="90" min="30" value="%s"></p>
       <input type="hidden" name="tempEnd">
       <p>Harmonogram<br> format hh:mm - temperatura (np: 22:00 - 40):<br>
       <textarea rows="10" name="times">%s</textarea>
@@ -131,18 +146,17 @@ class piec:
   </form>
 </body>
 </html>
-""" % (str(y), str(m), str(d), str(h), str(mm), last, str(temp), tm)
+""" % (str(y), str(m), str(d), str(h), str(mm), str(temperatura), last, str(temp), tm)
         return html
 
     def handle_timer(self):
-        times = utils.get_config("piec_times", "")
+        times = utils.get_config("piec_czasy", {})
         if self.time_update == 0:
             utils.settime()
             self.time_update = 1
 
         h = utime.localtime(utime.time() + 1 * 3600)[3]
         mm = utime.localtime(utime.time() + 1 * 3600)[4]
-        # print("Handle timer", lh, lm, h, mm)
         if self.lh == h and self.lm == mm:
             return
         self.lh = h
@@ -151,24 +165,17 @@ class piec:
         for t in times:
             th = t.split(':')[0]
             tm = int(t.split(':')[1])
-            # print("Time: ", h, mm, th, tm)
             if (th == '*' or int(th) == h) and tm == mm:
-                # print(th, tm, h, mm)
                 tmp = times[t]
-                # print("Time handled")
-                utils.set_config('piec_temperature', int(tmp))
-                # print('set 2')
                 self.set_temperature(int(tmp))
 
     def handle_web(self, conn, addr):
         conn.settimeout(0.5)
-        print('Got a connection from %s' % str(addr))
         request = conn.recv(2048)
 
         conn.settimeout(None)
         request = str(request)
-        print('Content = %s' % request)
-        save = request.find('/save')
+        save = request.find("/save""")
         if save > -1:
             start = request.find("temp=") + len("temp=")
             end = request.find("&tempEnd")
@@ -185,22 +192,21 @@ class piec:
         conn.sendall(response)
         utime.sleep(1)
         conn.close()
-        print("resp:", response)
 
     def handle_joystick(self):
         if self.edit_temp == 0:
-            self.edit_temp = int(utils.get_config('piec_temperature', '0'))
+            self.edit_temp = int(utils.get_config("piec_temperatura", 0))
         if self.state in (2, 3, 4, 5):
             val = self.adc.read()
-            if val >= 900:
-                self.edit_temp += 1
-                print('joy up', self.joy_val, val)
-                self.led_write_number(self.edit_temp, 1, False)
+            if val <= 200:
+                if self.edit_temp < int(utils.get_config("piec_temperatura_max", 90)):
+                    self.edit_temp += 1
+                    self.led_write_number(self.edit_temp)
                 utime.sleep_ms(150)
-            if  val <= 200:
-                self.edit_temp -= 1
-                print('joy down', self.joy_val, val)
-                self.led_write_number(self.edit_temp, 1, False)
+            if val >= 900:
+                if self.edit_temp > int(utils.get_config("piec_temperatura_min", 30)):
+                    self.edit_temp -= 1
+                    self.led_write_number(self.edit_temp)
                 utime.sleep_ms(150)
             self.joy_val = val
 
@@ -208,32 +214,25 @@ class piec:
         if self.btn_val == 1 and pin.value() == 0:
             self.state += 1
             if self.state == 1:
-                curr_temp = int(utils.get_config('piec_temperature', '0'))
-                self.led_write_number(curr_temp, 1, False)
+                curr_temp = int(utils.get_config("piec_temperatura", 0))
+                self.led_write_number(curr_temp)
             if self.state == 2:
-                self.edit_temp = int(utils.get_config('piec_temperature', '0'))
+                self.edit_temp = int(utils.get_config("piec_temperatura", 0))
             if self.state == 3:
                 self.state = 1
-                print('SET TEMP 1', self.edit_temp)
-                curr_temp = int(utils.get_config('piec_temperature', '0'))
+                curr_temp = int(utils.get_config("piec_temperatura", 0))
                 if self.edit_temp != curr_temp:
-                    print('SAVE TEMP!')
-                    utils.set_config('piec_temperature', int(self.edit_temp))
                     self.set_temperature(int(self.edit_temp))
-                    self.led_write_number(curr_temp, 1, False)
+                    self.led_write_number(self.edit_temp)
                 self.edit_temp = 0
+                self.display._write(5, 0)
         self.btn_val = pin.value()
 
     def init(self):
         if utils.wifi_connected() is False:
-            print("Load config")
             utils.load_config()
-            print("set temp")
-            self.set_temperature(int(utils.get_config("piec_temperature", 40)))
-
-            print("wifi connect")
+            self.set_temperature(int(utils.get_config("piec_temperatura", 40)))
             utils.wifi_connect()
-            print("Web start")
 
             if utils.wifi_connected() is True:
                 try:
@@ -256,6 +255,10 @@ class piec:
                             except OSError as e:
                                 conn.close()
                 self.handle_timer()
+
+                t = self.termometr.pomiar_temperatury()
+                self.led_write_number(int(round(t*10)), 5, [2])
+
             else:
                 if self.edit_state % 2 == 0:
                     self.display._write(5, 79)
@@ -265,9 +268,12 @@ class piec:
                 if self.edit_state > 100:
                     self.edit_state = 0
 
+
+
             self.handle_joystick()
             self.handle_button(self.button)
 
 
+utils.load_config()
 p = piec()
 p.run()

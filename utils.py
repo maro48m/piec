@@ -60,7 +60,7 @@ def get_config(name, defval=None):
 def wifi_connect():
     sta_if = network.WLAN(network.STA_IF)
 
-    if get_config("wifi_ap") != 0:
+    if get_config("wifi_ap_enabled") != 0:
         ap_if = network.WLAN(network.AP_IF)
         ap_if.active(True)
         ap_if.config(essid=get_config("wifi_ap_ssid"),
@@ -96,13 +96,13 @@ def wifi_disconnect():
     sta_if = network.WLAN(network.STA_IF)
     sta_if.active(False)
 
-    if get_config("wifi_ap") != 0:
+    if get_config("wifi_ap_enabled") != 0:
         ap_if = network.WLAN(network.AP_IF)
         ap_if.active(False)
 
 
 def settime():
-    if config["ntp"] == 1:
+    if config["ntp_enabled"] == 1:
         ntptime.host = config["ntp_server"]
         ntptime.settime()
 
