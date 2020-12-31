@@ -115,6 +115,7 @@ def wifi_disconnect():
 
 def settime():
     if config["ntp_enabled"] == 1:
+        log_message('SET TIME')
         ntptime.host = config["ntp_server"]
         ntptime.settime()
 

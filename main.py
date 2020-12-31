@@ -6,16 +6,20 @@ import select
 import max7219
 import sensors
 import webtemplate
+import os
 import gc
+import json
 
 class Piec:
     def __init__(self):
         self.servo_pin = Pin(int(utils.get_config("servo_pin", 4)))
         self.servo = PWM(self.servo_pin, freq=50)
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock = None
         utils.log_message('INIT 1')
-        self.lh = 0
-        self.lm = 0
+        self.lh = -1
+        self.lm = -1
+        self.ltm = -1
+        self.lum = -1
         self.time_update = 0
 
         self.spi = SPI(1, baudrate=10000000, polarity=0, phase=0)
@@ -101,8 +105,6 @@ class Piec:
             self.set_temperature(int(tmp))
         self.save_times(times)
 
-
-
     def handle_timer(self):
         times = utils.get_config("piec_czasy", {})
         if self.time_update == 0 and utils.wifi_connected():
@@ -124,28 +126,37 @@ class Piec:
                 tmp = times[t]
                 utils.log_message('HANDLE TIME %2d:%2d - %2d' % (th, tm, tmp))
                 self.set_temperature(int(tmp))
+        if mm % 5 == 0 and self.ltm != mm:
+            self.termometr.pomiar_temperatury(True)
+            self.ltm = mm
 
-        if mm % 10 == 0 and utils.wifi_connected():
-            utils.log_message('SET TIME')
+        if mm % 20 == 0 and self.lum != mm and utils.wifi_connected():
             utils.settime()
+            self.lum = mm
+
+
 
     def handle_web(self, conn, addr):
         conn.settimeout(0.5)
         gc.collect()
         request = b''
         while True:
-
+            buf = b''
             try:
-                buf = b''
+                print('buf')
                 buf = conn.recv(128)
             except Exception as erar:
+                print('err')
                 pass
+
             request += buf
 
             if buf == b'':
                 break
+
         conn.settimeout(None)
         request = str(request)
+        print(request)
         utils.log_message('WEB REQUEST')
         save = request.find("/save""")
         if save > -1:
@@ -156,24 +167,31 @@ class Piec:
             end = request.find("&timesEnd")
             times = request[start:end]
             self.web_save(temp, times)
+        if request.find("/logs_clear""") > -1:
+            os.remove('log.txt')
 
         if request.find("/logs""") > -1:
             conn.send('HTTP/1.1 200 OK\n')
             conn.send('Content-Type: text/plain\n')
             conn.send('Connection: close\n\n')
-            log_file = open('log.txt', 'r')
-            while True:
-                buf = log_file.read(128)
-                if buf == '':
-                    break
-                else:
-                    conn.send(buf)
+            try:
+                print('get_logs')
+                log_file = open('log.txt', 'r')
+
+                while True:
+                    buf = log_file.read(128)
+                    if buf == '':
+                        break
+                    else:
+                        conn.send(buf)
+            except Exception as eeee:
+                print('logs_open error', repr(eeee))
             log_file.close()
         elif request.find("/config""") > -1:
             conn.send('HTTP/1.1 200 OK\n')
-            conn.send('Content-Type: text/plain\n')
+            conn.send('Content-Type: application/json\n')
             conn.send('Connection: close\n\n')
-            conn.sendall(utils.config)
+            conn.sendall(json.dumps(utils.config))
         else:
             temper = self.termometr.pomiar_temperatury()
             response = webtemplate.get_template(temper)
@@ -182,7 +200,7 @@ class Piec:
             conn.send('Connection: close\n\n')
             conn.sendall(response)
 
-        utime.sleep(50)
+        utime.sleep(1)
         conn.close()
 
     def handle_joystick(self):
@@ -222,9 +240,11 @@ class Piec:
 
     def init_wifi(self):
         if utils.wifi_connected() is False:
+
             utils.wifi_connect()
             if utils.wifi_connected() is True:
                 try:
+                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     self.sock.bind(('', 80))
                     self.sock.listen(5)
                 except OSError as err:
@@ -259,7 +279,7 @@ class Piec:
                 self.handle_timer()
 
                 t = self.termometr.pomiar_temperatury()
-                self.led_write_number(int(round(t*10)), 5, [2])
+                self.led_write_number(int(round(t * 10)), 5, [2])
 
             else:
                 if self.edit_state % 2 == 0:
@@ -273,7 +293,6 @@ class Piec:
             self.handle_joystick()
             self.handle_button(self.button)
             utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
-            gc.collect()
 
 
 utils.log_message('START')

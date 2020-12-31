@@ -13,7 +13,7 @@ class sensory:
         self.termo_res = int(utils.get_config('termometr_rozdzielczosc'))
         self.termo_cnt = int(utils.get_config('termometr_powtorzen'))
 
-    def pomiar_temperatury(self, log_to_hist=True):
+    def pomiar_temperatury(self, log_to_hist=False):
         temperatura = 0
         cnt = 0
         dat = machine.Pin(self.termo_pin)
@@ -49,7 +49,7 @@ class sensory:
             # tmp = 0
 
         temperatura = temperatura / (self.termo_cnt * cnt * 1.0)
-        utils.log_message('TERMOMETR: %s', str(temperatura))
+        utils.log_message('TERMOMETR: %s' % (str(temperatura)))
         if log_to_hist:
             hist = utils.get_config('termometr_historia', {})
             czas = utils.czas(True)
