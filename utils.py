@@ -27,6 +27,12 @@ def val_map(x, in_min, in_max, out_min, out_max):
     return max(min(out_max, (x - in_min) * (out_max - out_min) // (in_max - in_min) + out_min), out_min)
 
 
+def map_temp_to_servo(temp):
+    min_servo = int(get_config("servo_min", 37))
+    max_servo = int(get_config("servo_max", 115))
+    servo_pos = val_map(temp, 30, 90, min_servo, max_servo)
+    return servo_pos
+
 def load_config():
     global config
     try:
@@ -73,14 +79,17 @@ def wifi_connect():
                         "0.0.0.0"))
 
     if not sta_if.isconnected():
-        sta_if.active(True)
-        sta_if.config(dhcp_hostname=get_config("hostname"))
-        sta_if.connect(get_config("wifi_ssid"), get_config("wifi_passwd"))
+        if sta_if.status() == 255:
+            sta_if.active(True)
+        if sta_if.status() not in (network.STAT_CONNECTING, network.STAT_GOT_IP):
+            sta_if.config(dhcp_hostname=get_config("hostname"))
+            sta_if.connect(get_config("wifi_ssid"), get_config("wifi_passwd"))
         t1 = utime.ticks_ms()
         while sta_if.status() != network.STAT_GOT_IP and utime.ticks_ms() - t1 < get_config("wifi_timeout"):
-            if sta_if.status() == network.STAT_CONNECTING:
+            utime.sleep_ms(100)
+            if sta_if.status() in (network.STAT_CONNECTING, network.STAT_NO_AP_FOUND):
                 pass
-            elif sta_if.status() in (network.STAT_CONNECT_FAIL, network.STAT_NO_AP_FOUND, network.STAT_WRONG_PASSWORD):
+            elif sta_if.status() in (network.STAT_CONNECT_FAIL, network.STAT_WRONG_PASSWORD):
                 break
 
     return sta_if.status()
@@ -91,6 +100,9 @@ def wifi_connected():
     sta_if.config("mac")
     return sta_if.isconnected()
 
+def wifi_config():
+    sta_if = network.WLAN(network.STA_IF)
+    return sta_if.ifconfig()
 
 def wifi_disconnect():
     sta_if = network.WLAN(network.STA_IF)
@@ -107,5 +119,26 @@ def settime():
         ntptime.settime()
 
 
-def clean():
+def clear():
     os.remove('main.py')
+
+
+def czas(sec=False):
+    y = utime.localtime(utime.time() + 1 * 3600)[0]
+    m = utime.localtime(utime.time() + 1 * 3600)[1]
+    d = utime.localtime(utime.time() + 1 * 3600)[2]
+    hh = utime.localtime(utime.time() + 1 * 3600)[3]
+    mm = utime.localtime(utime.time() + 1 * 3600)[4]
+    if sec:
+        ss = utime.localtime(utime.time() + 1 * 3600)[5]
+        return "%04d-%02d-%02d %02d:%02d:%02d" % (y, m, d, hh, mm, ss)
+    else:
+        return "%04d-%02d-%02d %02d:%02d" % (y, m, d, hh, mm)
+
+
+def log_message(message, save_to_file=True):
+    print(czas(True), message)
+    if save_to_file:
+        log_file = open('log.txt', 'a+')
+        print(czas(True), message, file=log_file)
+        log_file.close()

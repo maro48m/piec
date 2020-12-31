@@ -2,18 +2,18 @@ from machine import Pin, SPI, PWM, ADC
 import utils
 import utime
 import usocket as socket
-import gc
 import select
 import max7219
 import sensors
+import webtemplate
+import gc
 
-
-class piec:
+class Piec:
     def __init__(self):
         self.servo_pin = Pin(int(utils.get_config("servo_pin", 4)))
         self.servo = PWM(self.servo_pin, freq=50)
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
+        utils.log_message('INIT 1')
         self.lh = 0
         self.lm = 0
         self.time_update = 0
@@ -39,25 +39,20 @@ class piec:
 
         utils.wifi_disconnect()
 
-    def led_write_number(self, val, move=0, dots=[]):
+    def led_write_number(self, val, move=0, dots=None):
+        if dots is None:
+            dots = []
         digits = {1: 48, 2: 109, 3: 121, 4: 51, 5: 91, 6: 95, 7: 112, 8: 127, 9: 123, 0: 126}
         values = []
-        print(val)
-        print(values)
         while val > 0:
             d = int(val % 10)
-            print("d",d)
             val = int(val / 10)
-            print("val",val)
             v = digits[d]
             values.append(v)
-            print("values",values)
         values.reverse()
         pos = 8 - move
-        print(values)
         i = len(values)
         for d in values:
-            print('pos',pos)
             if dots.count(i) > 0:
                 d += 128
 
@@ -65,29 +60,25 @@ class piec:
             pos -= 1
             i -= 1
 
-    def parse_temp_to_servo(self, temp):
-        min_servo = int(utils.get_config("servo_min", 37))
-        max_servo = int(utils.get_config("servo_max", 115))
-        servo_pos = utils.val_map(temp, 30, 90, min_servo, max_servo)
-        return servo_pos
-
-    def set_temperature(self, new_temp):
-        y = utime.localtime(utime.time() + 1 * 3600)[0]
-        m = utime.localtime(utime.time() + 1 * 3600)[1]
-        d = utime.localtime(utime.time() + 1 * 3600)[2]
-        h = utime.localtime(utime.time() + 1 * 3600)[3]
-        mm = utime.localtime(utime.time() + 1 * 3600)[4]
-        czas = "%s-%s-%s %s:%s" % (str(y), str(m), str(d), str(h), str(mm))
-        utils.set_config("piec_ostatnia_aktualizacja", czas)
+    def set_temperature(self, new_temp, zapisz=True):
+        czas = utils.czas()
+        if zapisz is True:
+            utils.set_config("piec_ostatnia_aktualizacja", czas)
         curr_temp = int(utils.get_config("piec_temperatura"))
 
         if curr_temp < new_temp <= (int(utils.get_config("piec_temperatura_max", 90)) - 5):
             set_temp = new_temp + 5
-            self.servo.duty(self.parse_temp_to_servo(set_temp))
+            self.servo.duty(utils.map_temp_to_servo(set_temp))
             utime.sleep_ms(1000)
 
-        self.servo.duty(self.parse_temp_to_servo(new_temp))
+        utils.log_message('SET TEMPERATURE: %s' % (str(new_temp)))
+        self.servo.duty(utils.map_temp_to_servo(new_temp))
         utils.set_config("piec_temperatura", int(new_temp))
+        if zapisz is True:
+            historia = utils.get_config("piec_temperatura_historia", {})
+            historia[czas] = new_temp
+            utils.set_config("piec_temperatura_historia", historia)
+
         utime.sleep_ms(150)
 
         if self.state > 0:
@@ -95,9 +86,7 @@ class piec:
 
     def save_times(self, times):
         tms = {}
-        times = times.replace("%3A", ":")
-        times = times.replace("+-+", " - ")
-        times = times.replace("%0D%0A", "\n")
+        times = times.replace("%3A", ":").replace("+-+", " - ").replace("%0D%0A", "\n")
         for r in times.split('\n'):
             if r != '':
                 key = r.split(' - ')[0]
@@ -112,69 +101,52 @@ class piec:
             self.set_temperature(int(tmp))
         self.save_times(times)
 
-    def web_template(self):
-        temp = utils.get_config("piec_temperatura")
-        times = utils.get_config("piec_czasy", {})
-        last = utils.get_config("piec_ostatnia_aktualizacja", '')
-        temperatura = self.termometr.pomiar_temperatury()
-        tm = ''
-        y = utime.localtime(utime.time() + 1 * 3600)[0]
-        m = utime.localtime(utime.time() + 1 * 3600)[1]
-        d = utime.localtime(utime.time() + 1 * 3600)[2]
-        h = utime.localtime(utime.time() + 1 * 3600)[3]
-        mm = utime.localtime(utime.time() + 1 * 3600)[4]
-        for t in times:
-            tm += t + ' - ' + str(times[t]) + '\n'
-        html = """<!DOCTYPE html>
-<head>
-    <meta charset='UTF-8'>
-</head>
-<title>Kontrola pieca</title>
-<body>
-  <h3>Kontrola pieca</h3>
-  <p>Czas na urządzeniu: %s-%s-%s %s:%s</p>
-  <p>Pomiar temperatury: %s</p>
-  <p>Ostatnia zmiana temperatury: %s</p>
-  <form action="/save" method="get">
-      <p>Temperatura ustawiona:<br><input type="number" name="temp" max="90" min="30" value="%s"></p>
-      <input type="hidden" name="tempEnd">
-      <p>Harmonogram<br> format hh:mm - temperatura (np: 22:00 - 40):<br>
-      <textarea rows="10" name="times">%s</textarea>
-      </p>
-      <input type="hidden" name="timesEnd">
-      <button type="submit">ZAPISZ</button>
-  </form>
-</body>
-</html>
-""" % (str(y), str(m), str(d), str(h), str(mm), str(temperatura), last, str(temp), tm)
-        return html
+
 
     def handle_timer(self):
         times = utils.get_config("piec_czasy", {})
-        if self.time_update == 0:
+        if self.time_update == 0 and utils.wifi_connected():
             utils.settime()
             self.time_update = 1
 
-        h = utime.localtime(utime.time() + 1 * 3600)[3]
+        hh = utime.localtime(utime.time() + 1 * 3600)[3]
         mm = utime.localtime(utime.time() + 1 * 3600)[4]
-        if self.lh == h and self.lm == mm:
+        ss = utime.localtime(utime.time() + 1 * 3600)[5]
+        if self.lh == hh and self.lm == mm:
             return
-        self.lh = h
+        self.lh = hh
         self.lm = mm
 
         for t in times:
             th = t.split(':')[0]
             tm = int(t.split(':')[1])
-            if (th == '*' or int(th) == h) and tm == mm:
+            if (th == '*' or int(th) == hh) and tm == mm:
                 tmp = times[t]
+                utils.log_message('HANDLE TIME %2d:%2d - %2d' % (th, tm, tmp))
                 self.set_temperature(int(tmp))
+
+        if mm % 10 == 0 and utils.wifi_connected():
+            utils.log_message('SET TIME')
+            utils.settime()
 
     def handle_web(self, conn, addr):
         conn.settimeout(0.5)
-        request = conn.recv(2048)
+        gc.collect()
+        request = b''
+        while True:
 
+            try:
+                buf = b''
+                buf = conn.recv(128)
+            except Exception as erar:
+                pass
+            request += buf
+
+            if buf == b'':
+                break
         conn.settimeout(None)
         request = str(request)
+        utils.log_message('WEB REQUEST')
         save = request.find("/save""")
         if save > -1:
             start = request.find("temp=") + len("temp=")
@@ -185,12 +157,32 @@ class piec:
             times = request[start:end]
             self.web_save(temp, times)
 
-        response = self.web_template()
-        conn.send('HTTP/1.1 200 OK\n')
-        conn.send('Content-Type: text/html\n')
-        conn.send('Connection: close\n\n')
-        conn.sendall(response)
-        utime.sleep(1)
+        if request.find("/logs""") > -1:
+            conn.send('HTTP/1.1 200 OK\n')
+            conn.send('Content-Type: text/plain\n')
+            conn.send('Connection: close\n\n')
+            log_file = open('log.txt', 'r')
+            while True:
+                buf = log_file.read(128)
+                if buf == '':
+                    break
+                else:
+                    conn.send(buf)
+            log_file.close()
+        elif request.find("/config""") > -1:
+            conn.send('HTTP/1.1 200 OK\n')
+            conn.send('Content-Type: text/plain\n')
+            conn.send('Connection: close\n\n')
+            conn.sendall(utils.config)
+        else:
+            temper = self.termometr.pomiar_temperatury()
+            response = webtemplate.get_template(temper)
+            conn.send('HTTP/1.1 200 OK\n')
+            conn.send('Content-Type: text/html\n')
+            conn.send('Connection: close\n\n')
+            conn.sendall(response)
+
+        utime.sleep(50)
         conn.close()
 
     def handle_joystick(self):
@@ -228,32 +220,42 @@ class piec:
                 self.display._write(5, 0)
         self.btn_val = pin.value()
 
-    def init(self):
+    def init_wifi(self):
         if utils.wifi_connected() is False:
-            utils.load_config()
-            self.set_temperature(int(utils.get_config("piec_temperatura", 40)))
             utils.wifi_connect()
-
             if utils.wifi_connected() is True:
                 try:
                     self.sock.bind(('', 80))
                     self.sock.listen(5)
                 except OSError as err:
                     pass
+                    utils.log_message('WIFI ERROR')
+                    utils.log_message(repr(err))
 
     def run(self):
+        wifid = 0
         while True:
             if self.state < 2:
-                self.init()
+                self.init_wifi()
                 if utils.wifi_connected():
-                    r, w, err = select.select((self.sock,), (), (), 1)
+                    r, w, err = select.select((self.sock,), (), (), 5)
                     if r:
                         for readable in r:
                             try:
                                 conn, addr = self.sock.accept()
                                 self.handle_web(conn, addr)
-                            except OSError as e:
+                            except OSError as error:
+                                utils.log_message('WEB ERROR')
+                                utils.log_message(repr(error))
                                 conn.close()
+                else:
+                    wifid += 1
+                    utils.log_message('WIFI DOWN')
+                    if wifid > 10:
+                        utils.log_message('WIFI RECONNECT')
+                        utils.wifi_disconnect()
+                        wifid = 0
+
                 self.handle_timer()
 
                 t = self.termometr.pomiar_temperatury()
@@ -268,12 +270,24 @@ class piec:
                 if self.edit_state > 100:
                     self.edit_state = 0
 
-
-
             self.handle_joystick()
             self.handle_button(self.button)
+            utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
+            gc.collect()
 
 
+utils.log_message('START')
 utils.load_config()
-p = piec()
-p.run()
+utils.wifi_disconnect()
+while True:
+    try:
+        p = Piec()
+        p.set_temperature(int(utils.get_config("piec_temperatura", 40)), False)
+        utils.log_message('RUN')
+        p.run()
+    except Exception as err:
+        utils.log_message('GENERAL EXCEPTION')
+        utils.log_message(repr(err))
+
+    gc.collect()
+    utils.log_message('CRASH!')
