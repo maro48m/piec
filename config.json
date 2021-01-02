@@ -5,32 +5,27 @@
   "wifi_ap_ssid": "piec",
   "wifi_ap_auth": 3,
   "wifi_ap_netmask": "255.255.255.0",
-
   "wifi_ssid": "zrodlo",
   "wifi_passwd": "LothLorien.#13",
   "wifi_timeout": 15000,
-
-  "hostname": "piec_test",
+  "hostname": "piec",
   "ntp_server": "0.pl.pool.ntp.org",
   "ntp_enabled": 1,
-
   "piec_temperatura": 40,
   "piec_temperatura_min": 30,
   "piec_temperatura_max": 90,
   "piec_czasy": {
-      "06:30": 60,
-      "22:00": 40
-    },
+    "06:30": 45,
+    "10:00": 40,
+    "22:00": 35
+  },
   "piec_ostatnia_aktualizacja": "2020-12-20 12:45",
   "przycisk_pin": 5,
-
   "termometr_pin": 2,
   "termometr_rozdzielczosc": 9,
   "termometr_powtorzen": 5,
-
   "servo_pin": 4,
   "servo_min": 37,
   "servo_max": 115,
-  "wyswietlacz_pin": 15,
-  "przycisk_pin": 5
+  "wyswietlacz_pin": 15
 }

@@ -44,15 +44,8 @@ class sensory:
                 t = ds.read_temp(rom)
                 temperatura += t
 
-            # tmp = tmp / (i * 1.0)
-            # temperatura += tmp
-            # tmp = 0
-
         temperatura = temperatura / (self.termo_cnt * cnt * 1.0)
         utils.log_message('TERMOMETR: %s' % (str(temperatura)))
         if log_to_hist:
-            hist = utils.get_config('termometr_historia', {})
-            czas = utils.czas(True)
-            hist[czas] = temperatura
-            utils.set_config('termometr_historia', hist)
+            utils.save_to_hist(temperatura, 'termometr.hist')
         return temperatura

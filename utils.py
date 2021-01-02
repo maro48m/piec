@@ -3,6 +3,10 @@ import utime
 import json
 import ntptime
 import os
+import gc
+
+log_in_use = 0
+files_in_use = {}
 
 config = {"wifi_ssid": "zrodlo",
           "wifi_passwd": "LothLorien.#13",
@@ -125,13 +129,8 @@ def clear():
 
 
 def czas(sec=False):
-    y = utime.localtime(utime.time() + 1 * 3600)[0]
-    m = utime.localtime(utime.time() + 1 * 3600)[1]
-    d = utime.localtime(utime.time() + 1 * 3600)[2]
-    hh = utime.localtime(utime.time() + 1 * 3600)[3]
-    mm = utime.localtime(utime.time() + 1 * 3600)[4]
+    (y, m, d, hh, mm, ss, wd, yd) = utime.localtime(utime.time() + 1 * 3600)
     if sec:
-        ss = utime.localtime(utime.time() + 1 * 3600)[5]
         return "%04d-%02d-%02d %02d:%02d:%02d" % (y, m, d, hh, mm, ss)
     else:
         return "%04d-%02d-%02d %02d:%02d" % (y, m, d, hh, mm)
@@ -139,7 +138,32 @@ def czas(sec=False):
 
 def log_message(message, save_to_file=True):
     print(czas(True), message)
+    global log_in_use
     if save_to_file:
+        while log_in_use == 1:
+            utime.sleep_ms(1)
+        log_in_use = 1
         log_file = open('log.txt', 'a+')
         print(czas(True), message, file=log_file)
         log_file.close()
+        log_in_use = 0
+
+
+def save_to_hist(val, hist_file):
+    global files_in_use
+    c = czas(True)
+    hf = hist_file
+
+    if hf in files_in_use.keys():
+        while files_in_use[hf] == 1:
+            utime.sleep_ms(1)
+
+    files_in_use[hf] = 1
+    try:
+        with open(hf, 'a+') as ff:
+            ff.write('%s - %s\n' % (c, str(val)))
+            ff.close()
+    except Exception as jerr:
+        pass
+
+    files_in_use[hf] = 0

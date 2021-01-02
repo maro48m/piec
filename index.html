@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<head>
+    <meta charset='UTF-8'>
+    <style>
+        .piec {
+            width: 90%;
+            padding: 30px;
+            margin: 20px auto;
+            border-radius: 4px;
+            box-shadow: 0px 3px 3px rgba(0, 0, 0, 0.33);
+        }
+
+        .piec .inner-wrap {
+            padding: 58px 30px 30px 30px;
+            background: #F8F8F8;
+            border-radius: 6px;
+        }
+
+        .piec h1 {
+            background: #2A88AD;
+            padding: 15px 30px 15px 30px;
+            margin: -30px -30px 10px -30px;
+            border-radius: 10px 10px 0 0;
+            color: #fff;
+            font: 48px 'Helvetica', serif;
+            border: 1px solid #257C9E;
+        }
+
+        .piec .label {
+            font: 24px Helvetica, sans-serif;
+            padding-bottom: 5px;
+
+        }
+
+        .piec input,
+        .piec textarea {
+            display: block;
+            font-size: 24px;
+            box-sizing: border-box;
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 2px solid #fff;
+            box-shadow: inset 0px 1px 1px rgba(0, 0, 0, 0.33);
+        }
+
+        .piec .section {
+            font: normal 20px 'Helvetica', serif;
+            margin-bottom: 5px;
+            background: #2A88AD;
+            padding: 5px 25px 5px 10px;
+            position: absolute;
+            border-radius: 15px;
+            border: 4px solid #fff;
+            font-size: 24px;
+            font-weight: bold;
+            margin-left: -45px;
+            color: #fff;
+            margin-top: -3px;
+        }
+
+        .piec button {
+            background: #2A88AD;
+            padding: 8px 20px 8px 20px;
+            margin-top: 5px;
+            border-radius: 5px;
+            color: #fff;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.12);
+            box-shadow: inset 0px 2px 2px 0px rgba(255, 255, 255, 0.17);
+            border: 1px solid #257C9E;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .piec button:hover {
+            box-shadow: inset 0px 4px 4px 0px rgba(255, 255, 255, 0.88);
+        }
+
+        .piec a {
+            text-decoration: none !important;
+            color: #fff;
+        }
+
+        .piec .align {
+            vertical-align: middle;
+            margin-right: 5px;
+        }
+    </style>
+
+    <script>
+        var xmlDoc = null;
+
+        function loadData() {
+            xmlDoc = new XMLHttpRequest();
+            xmlDoc.onload = process;
+            xmlDoc.open("GET", "dane.json?" + new Date().getTime(), true);
+            xmlDoc.send(null);
+        }
+
+        function process() {
+            if (xmlDoc.readyState !== 4) return;
+            var dane = JSON.parse(xmlDoc.responseText);
+
+            document.getElementById('czas').innerHTML = dane['czas'];
+            document.getElementById('termometr').innerHTML = dane['termometr'];
+            document.getElementById('ostatnia_zmiana').innerHTML = dane['ostatnia_zmiana'];
+            document.getElementById('temperatura').value = dane['temperatura'];
+            document.getElementById('harmonogram').value = dane['harmonogram'];
+        }
+
+        window.onload = function() {
+            setTimeout(loadData, 1000)
+
+        };
+    </script>
+</head>
+<title>Kontrola pieca</title>
+
+<body>
+<div class="piec">
+    <h1><span class="align"><svg style="width:48px;height:48px" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M8 2C6.89 2 6 2.89 6 4V16C6 17.11 6.89 18 8 18H9V20H6V22H9C10.11 22 11 21.11 11 20V18H13V20C13 21.11 13.89 22 15 22H18V20H15V18H16C17.11 18 18 17.11 18 16V4C18 2.89 17.11 2 16 2H8M12 4.97A2 2 0 0 1 14 6.97A2 2 0 0 1 12 8.97A2 2 0 0 1 10 6.97A2 2 0 0 1 12 4.97M10 14.5H14V16H10V14.5Z" />
+    </svg></span><span class="align">Kontrola pieca</span></h1>
+    <div class="section"><span class="align" style="height: 22px">
+     <svg style="width:32px;height:32px;margin-top:5px;" viewBox="0 0 24 24">
+    <path fill="currentColor"
+          d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12C20,14.4 19,16.5 17.3,18C15.9,16.7 14,16 12,16C10,16 8.2,16.7 6.7,18C5,16.5 4,14.4 4,12A8,8 0 0,1 12,4M14,5.89C13.62,5.9 13.26,6.15 13.1,6.54L11.81,9.77L11.71,10C11,10.13 10.41,10.6 10.14,11.26C9.73,12.29 10.23,13.45 11.26,13.86C12.29,14.27 13.45,13.77 13.86,12.74C14.12,12.08 14,11.32 13.57,10.76L13.67,10.5L14.96,7.29L14.97,7.26C15.17,6.75 14.92,6.17 14.41,5.96C14.28,5.91 14.15,5.89 14,5.89M10,6A1,1 0 0,0 9,7A1,1 0 0,0 10,8A1,1 0 0,0 11,7A1,1 0 0,0 10,6M7,9A1,1 0 0,0 6,10A1,1 0 0,0 7,11A1,1 0 0,0 8,10A1,1 0 0,0 7,9M17,9A1,1 0 0,0 16,10A1,1 0 0,0 17,11A1,1 0 0,0 18,10A1,1 0 0,0 17,9Z"/>
+</svg></span><span class="align"> Odczyty</span> <button onclick="loadData()" style="background:#66cc00;border: 1px solid #4d9900;">Odśwież</button></div>
+    <div class="inner-wrap">
+        <div class="label"><span class="align" style="height: 22px"><svg style="width:32px;height:32px;margin-top:5px;"
+                                                                         viewBox="0 0 24 24">
+            <path fill="currentColor"
+                  d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22C6.47,22 2,17.5 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/>
+        </svg></span><span class="align">Data/godznia: <span id="czas"></span></span></div>
+        <div class="label"><span class="align" style="height: 22px"><svg style="width:32px;height:32px;margin-top:5px;"
+                                                                         viewBox="0 0 24 24">
+            <path fill="currentColor"
+                  d="M17 3H21V5H17V3M17 7H21V9H17V7M17 11H21V13H17.75L17 12.1V11M21 15V17H19C19 16.31 18.9 15.63 18.71 15H21M7 3V5H3V3H7M7 7V9H3V7H7M7 11V12.1L6.25 13H3V11H7M3 15H5.29C5.1 15.63 5 16.31 5 17H3V15M15 13V5C15 3.34 13.66 2 12 2S9 3.34 9 5V13C6.79 14.66 6.34 17.79 8 20S12.79 22.66 15 21 17.66 16.21 16 14C15.72 13.62 15.38 13.28 15 13M12 4C12.55 4 13 4.45 13 5V8H11V5C11 4.45 11.45 4 12 4Z"/>
+        </svg></span><span class="align">Termometr: <span id="termometr"></span></span></div>
+    </div>
+    <br>
+    <div class="section"><span class="align" style="height: 22px"><svg style="width:32px;height:32px;margin-top:5px;"
+                                                                       viewBox="0 0 24 24">
+    <path fill="currentColor"
+          d="M15 13V5A3 3 0 0 0 9 5V13A5 5 0 1 0 15 13M12 4A1 1 0 0 1 13 5V12H11V5A1 1 0 0 1 12 4Z"/>
+</svg></span><span class="align">Temperatura pieca</span></div>
+    <div class="inner-wrap">
+        <div class="label"><span class="align" style="height: 22px"><svg style="width:32px;height:32px;margin-top:5px;"
+                                                                         viewBox="0 0 24 24">
+    <path fill="currentColor"
+          d="M13.5,8H12V13L16.28,15.54L17,14.33L13.5,12.25V8M13,3A9,9 0 0,0 4,12H1L4.96,16.03L9,12H6A7,7 0 0,1 13,5A7,7 0 0,1 20,12A7,7 0 0,1 13,19C11.07,19 9.32,18.21 8.06,16.94L6.64,18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3"/>
+        </svg></span><span class="align">Ostatnia zmiana: <span id="ostatnia_zmiana"></span></span></div>
+        <form action="/save" method="get">
+            <div class="label"><span class="align" style="height: 22px"><svg
+                    style="width:32px;height:32px;margin-top:5px;" viewBox="0 0 24 24">
+    <path fill="currentColor"
+          d="M8 12.14V2H6V12.14C4.28 12.59 3 14.14 3 16S4.28 19.41 6 19.86V22H8V19.86C9.72 19.41 11 17.86 11 16S9.72 12.59 8 12.14M7 14C8.1 14 9 14.9 9 16S8.1 18 7 18C5.9 18 5 17.1 5 16S5.9 14 7 14M18 2H16V4.14C14.28 4.59 13 6.14 13 8S14.28 11.41 16 11.86V22H18V11.86C19.72 11.41 21 9.86 21 8S19.72 4.59 18 4.14V2M17 6C18.1 6 19 6.9 19 8S18.1 10 17 10C15.9 10 15 9.1 15 8S15.9 6 17 6Z"/>
+</svg></span><span class="align">Ustawiona temperatura:</span>
+                <input type="number" id="temperatura" name="temp" max="90"
+                       min="30">
+            </div>
+            <input type="hidden" name="tempEnd">
+            <br>
+            <div class="label"><span class="align" style="height: 22px"><svg
+                    style="width:32px;height:32px;margin-top:5px;"
+                    viewBox="0 0 24 24">
+    <path fill="currentColor"
+          d="M12,20A7,7 0 0,1 5,13A7,7 0 0,1 12,6A7,7 0 0,1 19,13A7,7 0 0,1 12,20M12,4A9,9 0 0,0 3,13A9,9 0 0,0 12,22A9,9 0 0,0 21,13A9,9 0 0,0 12,4M12.5,8H11V14L15.75,16.85L16.5,15.62L12.5,13.25V8M7.88,3.39L6.6,1.86L2,5.71L3.29,7.24L7.88,3.39M22,5.72L17.4,1.86L16.11,3.39L20.71,7.25L22,5.72Z"/>
+            </svg></span><span class="align"
+                               style="display: inline-block">Harmonogram<br> format hh:mm - temperatura<br>(np: 22:00 - 40):</span>
+            </div>
+            <textarea rows="5" name="times" id="harmonogram"></textarea>
+            <input type="hidden" name="timesEnd">
+            <button type="submit" style="background:#00cc00;border: 1px solid #009900;"><span class="align" style="height: 22px"><svg
+                    style="width:32px;height:32px;margin-top: 5px" viewBox="0 0 24 24">
+    <path fill="currentColor" d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z"/>
+</svg></span><span class="align">ZAPISZ</button>
+        </form>
+    </div>
+    <br>
+    <div class="section"><span class="align" style="height: 22px"><svg style="width:32px;height:32px;margin-top: 5px"
+                                                                       viewBox="0 0 24 24">
+    <path fill="currentColor"
+          d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+</svg></span><span class="align">Ustawienia</span></div>
+    <div class="inner-wrap">
+        <div>
+            <button><a href="/hist_piec">Historia zmian temperatury</a></button>
+            <button><a href="/hist_termo">Historia termometru</a></button>
+        </div>
+        <div>
+            <button><a href="/logs">Plik logów</a></button>
+            <button><a href="/config">Parametry</a></button>
+        </div>
+        <div>
+            <button style="background:#cc3300;border: 1px solid #992600;"><a href="/clear">Wyczyść logi i historię</a></button>
+        </div>
+    </div>
+</div>
+</body>
+</html>
