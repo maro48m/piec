@@ -9,9 +9,6 @@ import sensors
 import gc
 import web
 
-utils.load_config()
-utils.wifi_disconnect()
-
 class Piec:
     def __init__(self):
         self.servo_pin = Pin(int(utils.get_config("servo_pin", 4)))
@@ -230,7 +227,7 @@ class Piec:
                 except OSError as err:
                     self.sock.close()
                     utils.log_message('SOCKET ERROR')
-                    utils.log_message(repr(err))
+                    utils.log_exception(err)
                     utils.wifi_disconnect()
 
     def run(self):
@@ -247,7 +244,7 @@ class Piec:
                                 self.handle_web(conn, addr)
                             except OSError as error:
                                 utils.log_message('WEB ERROR')
-                                utils.log_message(repr(error))
+                                utils.log_exception(error)
                                 conn.close()
                 else:
                     wifid += 1
@@ -275,6 +272,8 @@ class Piec:
             self.handle_button(self.button)
             utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
 
+utils.load_config()
+utils.wifi_disconnect()
 
 while True:
     try:
@@ -284,7 +283,7 @@ while True:
         p.run()
     except Exception as err:
         utils.log_message('GENERAL EXCEPTION')
-        utils.log_message(repr(err))
+        utils.log_exception(err)
 
     gc.collect()
     utils.log_message('CRASH!')

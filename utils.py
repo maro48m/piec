@@ -3,8 +3,8 @@ import utime
 import json
 import ntptime
 import os
+import sys
 
-log_in_use = 0
 files_in_use = {}
 
 config = {}
@@ -19,6 +19,7 @@ def map_temp_to_servo(temp):
     max_servo = int(get_config("servo_max", 115))
     servo_pos = val_map(temp, 30, 90, min_servo, max_servo)
     return servo_pos
+
 
 def load_config():
     global config
@@ -87,9 +88,11 @@ def wifi_connected():
     sta_if.config("mac")
     return sta_if.isconnected()
 
+
 def wifi_config():
     sta_if = network.WLAN(network.STA_IF)
     return sta_if.ifconfig()
+
 
 def wifi_disconnect():
     sta_if = network.WLAN(network.STA_IF)
@@ -118,18 +121,48 @@ def czas(sec=False):
     else:
         return "%04d-%02d-%02d %02d:%02d" % (y, m, d, hh, mm)
 
+def log_exception(exception, save_to_file=True):
+    print(czas(True))
+    sys.print_exception(exception)
+
+    global files_in_use
+    hf = 'log.txt'
+    if save_to_file:
+        if hf in files_in_use.keys():
+            while files_in_use[hf] == 1:
+                utime.sleep_ms(1)
+
+        files_in_use[hf] = 1
+        log_file = open('log.txt', 'a+')
+
+        print(czas(True), file=log_file)
+        sys.print_exception(exception, log_file)
+
+        log_file.close()
+        files_in_use[hf] = 0
 
 def log_message(message, save_to_file=True):
-    print(czas(True), message)
-    global log_in_use
+    if type(message) == Exception:
+        print(czas(True))
+        sys.print_exception(message)
+    else:
+        print(czas(True), message)
+    global files_in_use
+    hf = 'log.txt'
     if save_to_file:
-        while log_in_use == 1:
-            utime.sleep_ms(1)
-        log_in_use = 1
+        if hf in files_in_use.keys():
+            while files_in_use[hf] == 1:
+                utime.sleep_ms(1)
+
+        files_in_use[hf] = 1
         log_file = open('log.txt', 'a+')
-        print(czas(True), message, file=log_file)
+        if type(message) == Exception:
+            print(czas(True), file=log_file)
+            sys.print_exception(message, log_file)
+        else:
+            print(czas(True), message, file=log_file)
         log_file.close()
-        log_in_use = 0
+        files_in_use[hf] = 0
 
 
 def save_to_hist(val, hist_file):
@@ -151,19 +184,23 @@ def save_to_hist(val, hist_file):
 
     files_in_use[hf] = 0
 
+
 def remove_hist(file):
+    files = []
     if file & 1:
-        try:
-            os.remove('piec.hist')
-        except:
-            pass
+        files.append('piec.hist')
     if file & 2:
-        try:
-            os.remove('termometr.hist')
-        except:
-            pass
+        files.append('termometr.hist')
     if file & 4:
+        files.append('log.txt')
+
+    for hf in files:
         try:
-            os.remove('log.txt')
+            if hf in files_in_use.keys():
+                while files_in_use[hf] == 1:
+                    utime.sleep_ms(1)
+            files_in_use[hf] = 1
+            os.remove(hf)
+            files_in_use[hf] = 0
         except:
             pass
