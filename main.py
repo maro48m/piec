@@ -5,9 +5,7 @@ import usocket as socket
 import select
 import max7219
 import sensors
-import os
 
-import json
 import gc
 import web
 
@@ -92,12 +90,14 @@ class Piec:
 
     def save_times(self, times):
         tms = {}
-        times = times.replace("%3A", ":").replace("+-+", " - ").replace("%0D%0A", "\n")
-        for r in times.split('\n'):
+        times = times.replace("%3A", ":").replace("%20-%20", " - ")
+        while times != '':
+            r = times[0:10]
             if r != '':
                 key = r.split(' - ')[0]
                 val = r.split(' - ')[1]
                 tms[key] = int(val)
+            times = times[10:]
         utils.set_config("piec_czasy", tms)
 
     def web_save(self, temp, times):
@@ -122,7 +122,7 @@ class Piec:
         for t in times:
             th = t.split(':')[0]
             tm = int(t.split(':')[1])
-            if th == '*':
+            if th == '**':
                 th = str(hh)
             if int(th) == hh and tm == mm:
                 tmp = times[t]
@@ -154,53 +154,26 @@ class Piec:
         request = str(request)
         utils.log_message('WEB REQUEST')
         utils.log_message(request)
+        handled = False
         if request.find("/save") > -1:
             temp = int(request[request.find("temp=") + len("temp="):request.find("&tempEnd")])
             times = request[request.find("times=") + len("times="):request.find("&timesEnd")]
             self.web_save(temp, times)
+        elif request.find("/api/") > -1:
+            handled = web.handle_api(conn, request)
+        elif -1 < request.find("/hist/termo") < request.find("Referer"):
             conn.sendall(web.get_header('text/html'))
-            web.send_file(conn, 'index.html')
-        elif request.find("/clear") > -1:
-            os.remove('log.txt')
-            os.remove('piec.hist')
-            os.remove('termometr.hist')
+            web.send_file(conn, 'hist_termo.html', 'r')
+            handled = True
+        elif -1 < request.find("/hist/piec") > request.find("Referer"):
             conn.sendall(web.get_header('text/html'))
-            web.send_file(conn, 'index.html')
-        elif request.find("/favicon") > -1:
-            conn.sendall(web.get_header('image/x-icon'))
-            web.send_file(conn, 'favicon.ico', 'rb')
-
-        elif request.find("/logs") > -1:
-            conn.sendall(web.get_header('text/plain'))
-            web.send_file(conn, 'log.txt', 'r')
-        elif request.find("/config") > -1:
-            conn.sendall(web.get_header('application/json'))
-            conn.sendall(json.dumps(utils.config))
-        elif request.find("/hist_piec") > -1:
-            conn.sendall(web.get_header('text/plain'))
-            web.send_file(conn, 'piec.hist', 'r')
-        elif request.find("/hist_termo") > -1:
-            conn.sendall(web.get_header('text/plain'))
-            web.send_file(conn, 'termometr.hist', 'r')
-        elif request.find("/dane.json") > -1:
-            conn.sendall(web.get_header('application/json'))
-            dane = {}
-            dane["czas"] = utils.czas()
-            dane["termometr"] = self.termometr.pomiar_temperatury()
-            dane["temperatura"] = int(utils.get_config('piec_temperatura', 40))
-            dane["ostatnia_zmiana"] = utils.get_config('piec_ostatnia_aktualizacja', '')
-            times = utils.get_config('piec_czasy', {})
-            tm = ''
-            for t in sorted(times):
-                tm += t + ' - ' + str(times[t]) + '\n'
-
-            dane["harmonogram"] = tm
-            conn.send(json.dumps(dane))
-        elif request.find("/hist_termo") > -1:
-            conn.sendall(web.get_header('text/plain'))
-            web.send_file(conn, 'termometr.hist', 'r')
-
-        else:
+            web.send_file(conn, 'hist_piec.html', 'r')
+            handled = True
+        elif -1 < request.find("/logs") > request.find("Referer"):
+            conn.sendall(web.get_header('text/html'))
+            web.send_file(conn, 'logs.html', 'r')
+            handled = True
+        if not handled:
             conn.sendall(web.get_header('text/html'))
             web.send_file(conn, 'index.html')
         utils.log_message('WEB REQUEST DONE')

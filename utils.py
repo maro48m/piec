@@ -3,28 +3,11 @@ import utime
 import json
 import ntptime
 import os
-import gc
 
 log_in_use = 0
 files_in_use = {}
 
-config = {"wifi_ssid": "zrodlo",
-          "wifi_passwd": "LothLorien.#13",
-          "hostname": "piec",
-          "wifi_timeout": 15000,
-          "wifi_ap": 0,
-          "wifi_ap_auth": 3,
-          "wifi_ap_ssid": "piec",
-          "wifi_ap_passwd": "piec1234",
-          "wifi_ap_ip": "192.168.23.1",
-          "wifi_ap_netmask": "255.255.255.0",
-          "ntp": 1,
-          "ntp_server": "0.pl.pool.ntp.org",
-          "piec_temperature": 50,
-          "piec_times": {
-              "06:30": 50,
-              "22:00": 40}
-          }
+config = {}
 
 
 def val_map(x, in_min, in_max, out_min, out_max):
@@ -167,3 +150,20 @@ def save_to_hist(val, hist_file):
         pass
 
     files_in_use[hf] = 0
+
+def remove_hist(file):
+    if file & 1:
+        try:
+            os.remove('piec.hist')
+        except:
+            pass
+    if file & 2:
+        try:
+            os.remove('termometr.hist')
+        except:
+            pass
+    if file & 4:
+        try:
+            os.remove('log.txt')
+        except:
+            pass
