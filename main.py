@@ -90,7 +90,7 @@ class Piec:
 
     def save_times(self, times):
         tms = {}
-        times = times.replace("%3A", ":").replace("%20-%20", " - ")
+        # times = times.replace("%3A", ":").replace("%20-%20", " - ")
         while times != '':
             r = times[0:10]
             if r != '':
@@ -151,25 +151,25 @@ class Piec:
                 break
 
         conn.settimeout(None)
-        request = str(request)
+        url = web.parse_request(request)
         utils.log_message('WEB REQUEST')
         utils.log_message(request)
         handled = False
-        if request.find("/save") > -1:
-            temp = int(request[request.find("temp=") + len("temp="):request.find("&tempEnd")])
-            times = request[request.find("times=") + len("times="):request.find("&timesEnd")]
+        if url.find("/save") > -1:
+            temp = int(url[url.find("temp=") + len("temp="):url.find("&tempEnd")])
+            times = url[url.find("times=") + len("times="):url.find("&timesEnd")]
             self.web_save(temp, times)
-        elif request.find("/api/") > -1:
-            handled = web.handle_api(conn, request)
-        elif -1 < request.find("/hist/termo") < request.find("Referer"):
+        elif url.find("/api/") > -1:
+            handled = web.handle_api(conn, url)
+        elif url.find("/hist/termo") > -1:
             conn.sendall(web.get_header('text/html'))
             web.send_file(conn, 'hist_termo.html', 'r')
             handled = True
-        elif -1 < request.find("/hist/piec") > request.find("Referer"):
+        elif url.find("/hist/piec") > -1:
             conn.sendall(web.get_header('text/html'))
             web.send_file(conn, 'hist_piec.html', 'r')
             handled = True
-        elif -1 < request.find("/logs") > request.find("Referer"):
+        elif url.find("/logs") > -1:
             conn.sendall(web.get_header('text/html'))
             web.send_file(conn, 'logs.html', 'r')
             handled = True
