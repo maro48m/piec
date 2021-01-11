@@ -3,17 +3,16 @@ import onewire
 import ds18x20
 import utime
 import utils
-import dht
 
 
-class sensory:
+class Sensory:
     def pomiar_temperatury(self, log_to_hist=False):
 
-        termo_pin = int(utils.get_config('termometr_pin'))
-        termo_res = int(utils.get_config('termometr_rozdzielczosc'))
-        termo_cnt = int(utils.get_config('termometr_powtorzen'))
+        termo_pin = int(utils.get_config('thermometer_pin'))
+        termo_res = int(utils.get_config('thermometer_res'))
+        termo_cnt = int(utils.get_config('thermometer_repeat'))
 
-        temperatura = 0
+        temperature = 0
         cnt = 0
         dat = machine.Pin(termo_pin)
         ds = ds18x20.DS18X20(onewire.OneWire(dat))
@@ -35,16 +34,16 @@ class sensory:
 
             ds.write_scratch(rom, config)
             cnt += 1
-        for x in range(termo_cnt):
-            ds.convert_temp()
+        if cnt > 0:
+            for x in range(termo_cnt):
+                ds.convert_temp()
 
-            utime.sleep_ms(int(750 / (2 ** (12 - termo_res))))
-            for rom in roms:
-                t = ds.read_temp(rom)
-                temperatura += t
+                utime.sleep_ms(int(750 / (2 ** (12 - termo_res))))
+                for rom in roms:
+                    t = ds.read_temp(rom)
+                    temperature += t
 
-        temperatura = temperatura / (termo_cnt * cnt * 1.0)
-        utils.log_message('TERMOMETR: %s' % (str(temperatura)))
-        if log_to_hist:
-            utils.save_to_hist(temperatura, 'termometr.hist')
-        return temperatura
+            temperature = temperature / (termo_cnt * cnt * 1.0)
+            if log_to_hist:
+                utils.save_to_hist(temperature, 'termometr.hist')
+        return temperature

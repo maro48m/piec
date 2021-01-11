@@ -2,6 +2,7 @@
 <html lang="'pl">
 <head>
     <meta charset='UTF-8'>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" href="data:,">
     <style>
         .piec {
@@ -44,6 +45,11 @@
             border-radius: 6px;
             border: 2px solid #fff;
             box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.33);
+        }
+        @media(max-width: 767px){
+            .piec input, .piec textarea{
+                font-size: 24px;
+            }
         }
 
 
@@ -133,6 +139,12 @@
             document.getElementById('ostatnia_zmiana').innerHTML = dane['ostatnia_zmiana'];
             document.getElementById('temperatura').value = dane['temperatura'];
             document.getElementById('harmonogram').value = dane['harmonogram'];
+
+            document.getElementById('fs_size').innerHTML = dane['fs_size'];
+            document.getElementById('fs_free').innerHTML = dane['fs_free'];
+            document.getElementById('mem_free').innerHTML = dane['mem_free'];
+            document.getElementById('mem_size').innerHTML = dane['mem_size'];
+
             document.getElementById("savebtn").disabled = false;
         }
 
@@ -214,8 +226,15 @@
                 </span>
             <span class="align">Termometr: <span id="termometr"></span></span>
         </div>
+        <div class="label">
+            Pamięć całkowita/wolna: <span id="mem_size"></span>/<span id="mem_free"></span>
+        </div>
+        <div class="label">
+            Miejsce całkowite/wolne: <span id="fs_size"></span>/<span id="fs_free"></span>
+        </div>
     </div>
     <br>
+    <form action="javascript:void(0);">
     <div class="section">
             <span class="align" style="height: 22px">
                 <svg class="svgimg" viewBox="0 0 24 24">
@@ -250,7 +269,7 @@
                     </svg>
                 </span>
             <span class="align">Ustawiona temperatura:</span>
-            <input type="number" id="temperatura" name="temp" max="90" min="30">
+            <input type="number" id="temperatura" max="90" min="30">
         </div>
         <br>
         <div class="label">
@@ -268,7 +287,7 @@
                     format hh:mm - temperatura<br>
                     (np: 22:00 - 40):</span>
         </div>
-        <textarea rows="5" name="times" id="harmonogram"></textarea>
+        <textarea rows="5" id="harmonogram"></textarea>
         <button onclick="saveData()" class="savebtn" id="savebtn" disabled>
                 <span class="align" style="height: 22px">
                     <svg class="svgimg" viewBox="0 0 24 24">
@@ -279,6 +298,7 @@
             <span class="align">ZAPISZ</span>
         </button>
     </div>
+    </form>
     <br>
     <div class="section">
             <span class="align" style="height: 22px">
@@ -306,7 +326,7 @@
         </div>
         <div>
             <button><a href="/logs">Plik logów</a></button>
-            <button><a href="/api/config">Parametry</a></button>
+            <button><a href="/params">Parametry</a></button>
         </div>
         <div>
             <button class="clearbtn" onclick="clearLogs()">Wyczyść logi i historię</button>

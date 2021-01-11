@@ -24,7 +24,7 @@ def map_temp_to_servo(temp):
 def load_config():
     global config
     try:
-        with open('config.json') as infile:
+        with open('/config.json') as infile:
             config = json.load(infile)
             infile.close()
     except Exception as err:
@@ -33,7 +33,7 @@ def load_config():
 
 def save_config():
     global config
-    with open('config.json', 'w') as outfile:
+    with open('/config.json', 'w') as outfile:
         json.dump(config, outfile)
         outfile.close()
 
@@ -54,7 +54,7 @@ def get_config(name, defval=None):
 def wifi_connect():
     sta_if = network.WLAN(network.STA_IF)
 
-    if get_config("wifi_ap_enabled") != 0:
+    if get_config("wifi_ap_enabled", False) is True:
         ap_if = network.WLAN(network.AP_IF)
         ap_if.active(True)
         ap_if.config(essid=get_config("wifi_ap_ssid"),
@@ -98,14 +98,13 @@ def wifi_disconnect():
     sta_if = network.WLAN(network.STA_IF)
     sta_if.active(False)
 
-    if get_config("wifi_ap_enabled") != 0:
+    if get_config("wifi_ap_enabled", False) is True:
         ap_if = network.WLAN(network.AP_IF)
         ap_if.active(False)
 
 
 def settime():
-    if config["ntp_enabled"] == 1:
-        log_message('SET TIME')
+    if get_config("ntp_enabled", True) is True:
         ntptime.host = config["ntp_server"]
         ntptime.settime()
 
@@ -120,6 +119,7 @@ def czas(sec=False):
         return "%04d-%02d-%02d %02d:%02d:%02d" % (y, m, d, hh, mm, ss)
     else:
         return "%04d-%02d-%02d %02d:%02d" % (y, m, d, hh, mm)
+
 
 def log_exception(exception, save_to_file=True):
     print(czas(True))
@@ -140,6 +140,7 @@ def log_exception(exception, save_to_file=True):
 
         log_file.close()
         files_in_use[hf] = 0
+
 
 def log_message(message, save_to_file=True):
     if type(message) == Exception:
