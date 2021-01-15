@@ -3,21 +3,31 @@ import json
 import sensors
 import os
 import gc
+import utime
 
 
 def send_file(socket, file_name, mode='r'):
     try:
+        while utils.file_locked(file_name):
+            utime.sleep_ms(1)
+
+        utils.lock_file(file_name)
+
         with open(file_name, mode) as fi:
             while True:
                 buf = fi.read(128)
                 if str(buf) == '':
                     break
                 else:
-                    socket.sendall(buf)
+                    if socket is not None:
+                        socket.sendall(buf)
             fi.close()
     except Exception as eee:
         utils.log_message('WWW FILE ERROR %s' % file_name)
         utils.log_exception(eee)
+
+    utils.wait_for_file()
+    utils.unlock_file(file_name)
 
 
 def get_header(mime_type):

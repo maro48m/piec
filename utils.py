@@ -36,6 +36,7 @@ def save_config():
     with open('/config.json', 'w') as outfile:
         json.dump(config, outfile)
         outfile.close()
+    wait_for_file()
 
 
 def set_config(name, value, save=True):
@@ -58,7 +59,7 @@ def wifi_connect():
         ap_if = network.WLAN(network.AP_IF)
         ap_if.active(True)
         ap_if.config(essid=get_config("wifi_ap_ssid"),
-                     authmode=get_config("wifi_ap_auth", ""),
+                     authmode=int(get_config("wifi_ap_auth", 0)),
                      password=get_config("wifi_ap_passwd", ""))
 
         ap_if.ifconfig((get_config("wifi_ap_ip"),
@@ -105,8 +106,11 @@ def wifi_disconnect():
 
 def settime():
     if get_config("ntp_enabled", True) is True:
-        ntptime.host = config["ntp_server"]
-        ntptime.settime()
+        try:
+            ntptime.host = config["ntp_server"]
+            ntptime.settime()
+        except OSError as err:
+            log_exception(err)
 
 
 def clear():
@@ -139,6 +143,7 @@ def log_exception(exception, save_to_file=True):
         sys.print_exception(exception, log_file)
 
         log_file.close()
+        wait_for_file()
         files_in_use[hf] = 0
 
 
@@ -163,6 +168,7 @@ def log_message(message, save_to_file=True):
         else:
             print(czas(True), message, file=log_file)
         log_file.close()
+        wait_for_file()
         files_in_use[hf] = 0
 
 
@@ -183,7 +189,30 @@ def save_to_hist(val, hist_file):
     except Exception as jerr:
         pass
 
+    wait_for_file()
     files_in_use[hf] = 0
+
+
+def file_locked(file_name):
+    global files_in_use
+    if file_name in files_in_use.keys():
+        return files_in_use[file_name] == 1
+    else:
+        return False
+
+
+def lock_file(file_name):
+    global files_in_use
+    files_in_use[file_name] = 1
+
+
+def unlock_file(file_name):
+    global files_in_use
+    files_in_use[file_name] = 0
+
+
+def wait_for_file():
+    utime.sleep_ms(250)
 
 
 def remove_hist(file):

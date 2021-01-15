@@ -3,6 +3,7 @@ import utils
 import utime
 import usocket as socket
 import select
+import machine
 
 import gc
 import web
@@ -27,7 +28,7 @@ class Piec:
 
     def set_temperature(self, new_temp, zapisz=True):
         czas = utils.czas()
-        if zapisz is True and utils.get_config("piec_historia_temperatury",True) is True:
+        if zapisz is True and utils.get_config("piec_historia_temperatury", True) is True:
             utils.set_config("piec_ostatnia_aktualizacja", czas)
         curr_temp = int(utils.get_config("piec_temperatura"))
 
@@ -223,6 +224,7 @@ class Piec:
                         utils.log_message('WIFI RECONNECT')
                         utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
                         utils.wifi_disconnect()
+                        machine.soft_reset()
                         wifid = 0
 
                 self.handle_timer()
