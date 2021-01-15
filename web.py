@@ -95,7 +95,54 @@ def handle_api(socket, request):
     elif request["url"].find("/api/hist_termo") > -1:
         socket.sendall(get_header('text/plain'))
         send_file(socket, 'termometr.hist', 'r')
+    elif request["url"].find("/api/chart.json") > -1:
+        socket.sendall(get_header('application/json'))
+        send_chart_data(socket)
     return True
+
+
+def send_chart_data(socket):
+    for i in range(1, 3):
+        if i == 1:
+            file_name = 'termometr.hist'
+            data = """[{"name": "Termometr", "data": ["""
+            termometr = sensors.Sensory()
+            curr = termometr.pomiar_temperatury()
+        else:
+            file_name = 'piec.hist'
+            data = """{"name": "Piec", "data": ["""
+            curr = int(utils.get_config("piec_temperatura",40))
+
+        socket.sendall(data)
+        try:
+            while utils.file_locked(file_name):
+                utime.sleep_ms(1)
+
+            utils.lock_file(file_name)
+            data = []
+
+            with open(file_name, 'r') as fi:
+                while True:
+                    buf = fi.readline()
+                    if str(buf) == '':
+                        break
+                    else:
+                        d = buf.rstrip().split(" - ")
+                        socket.sendall(json.dumps(d)+',')
+                fi.close()
+        except Exception as eee:
+            utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name)
+            utils.log_exception(eee)
+
+        d = [utils.czas(True), curr]
+        socket.sendall(json.dumps(d))
+        if i == 1:
+            socket.sendall("""]},""")
+        else:
+            socket.sendall("""]}]""")
+
+        utils.wait_for_file()
+        utils.unlock_file(file_name)
 
 
 _hextobyte_cache = None

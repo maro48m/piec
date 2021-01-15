@@ -75,6 +75,10 @@ class Piec:
             self.time_update = 1
 
         (y, m, d, hh, mm, ss, wd, yd) = utime.localtime(utime.time() + 1 * 3600)
+
+        if y == 2000:
+            return
+
         if self.lh == hh and self.lm == mm:
             return
         self.lh = hh
@@ -89,9 +93,10 @@ class Piec:
                 tmp = times[t]
                 utils.log_message('HANDLE TIME %2d:%2d - %s' % (int(th), int(tm), tmp))
                 self.set_temperature(int(tmp))
-        if mm % 5 == 0 and self.ltm != mm:
-            self.devices.thermometer_value(utils.get_config('piec_historia_termometru', True))
-            self.ltm = mm
+        if utils.get_config('piec_historia_termometru', True):
+            if mm % int(utils.get_config("piec_historia_termometru_czas", 5)) == 0 and self.ltm != mm:
+                self.devices.thermometer_value(utils.get_config('piec_historia_termometru', True))
+                self.ltm = mm
 
         if mm % 20 == 0 and self.lum != mm and utils.wifi_connected():
             utils.settime()

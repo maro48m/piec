@@ -149,6 +149,7 @@
             document.getElementById('wifi_ap_passwd').value = dane['wifi_ap_passwd'];
 
             document.getElementById('piec_historia_termometru').checked = dane['piec_historia_termometru'];
+            document.getElementById('piec_historia_termometru_czas').value = dane['piec_historia_termometru_czas'];
             document.getElementById('thermometer_res').value = dane['thermometer_res'];
             document.getElementById('thermometer_repeat').value = dane['thermometer_repeat'];
             document.getElementById('servo_min').value = dane['servo_min'];
@@ -193,6 +194,7 @@
                 'piec_temperatura_min': document.getElementById('piec_temperatura_min').value,
                 'piec_temperatura_max': document.getElementById('piec_temperatura_max').value,
                 'piec_historia_temperatury': document.getElementById('piec_historia_temperatury').checked,
+                'piec_historia_termometru_czas': document.getElementById('piec_historia_termometru_czas').value,
                 'button_pin': document.getElementById('button_pin').value,
                 'thermometer_pin': document.getElementById('thermometer_pin').value,
                 'servo_pin': document.getElementById('servo_pin').value,
@@ -252,6 +254,8 @@
         <div class="section"><span>Ustawienia termometru</span></div>
         <div class="inner-wrap">
             <div class="label">Rejestruj historię termometru: <input type="checkbox" id="piec_historia_termometru">
+            </div>
+            <div class="label">Czas pomiaru[min]: <input type="number" id="piec_historia_termometru_czas">
             </div>
             <div class="label">Dokładność pomiaru:
                 <select id="thermometer_res">

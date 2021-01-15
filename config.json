@@ -24,6 +24,7 @@
   "piec_ostatnia_aktualizacja": "2020-12-20 12:45",
   "piec_historia_termometru": true,
   "piec_historia_temperatury": true,
+  "piec_historia_termometru_czas": 5,
 
   "button_pin": 5,
   "button_pin__comment": "D1",
