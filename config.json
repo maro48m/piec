@@ -13,13 +13,12 @@
   "ntp_server": "0.pl.pool.ntp.org",
   "ntp_enabled": true,
 
-  "piec_temperatura": 40,
+  "piec_temperatura": 45,
   "piec_temperatura_min": 30,
   "piec_temperatura_max": 90,
   "piec_czasy": {
     "06:30": 45,
-    "10:00": 40,
-    "22:00": 35
+    "22:00": 40
   },
   "piec_ostatnia_aktualizacja": "2020-12-20 12:45",
   "piec_historia_termometru": true,

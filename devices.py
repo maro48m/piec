@@ -2,6 +2,9 @@ from machine import Pin, SPI, PWM, ADC
 import utils
 import max7219
 import sensors
+import sys
+if sys.platform == 'esp32':
+    import esp32
 
 
 class Devices:
@@ -21,7 +24,11 @@ class Devices:
         if int(utils.get_config("button_pin", -1)) > -1:
             self.button = Pin(int(utils.get_config("button_pin", 5)), Pin.IN, Pin.PULL_UP)
 
-        self.adc = ADC(0)
+        if sys.platform == 'esp8266':
+            self.adc = ADC(0)
+        elif sys.platform == 'esp32':
+            self.adc = ADC(Pin(32))
+            self.adc.atten(ADC.ATTN_11DB)
 
         if int(utils.get_config('thermometer_pin', -1)) > -1:
             self.thermometer = sensors.Sensory()

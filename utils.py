@@ -3,6 +3,7 @@ import utime
 import json
 import ntptime
 import os
+import gc
 import sys
 
 files_in_use = {}
@@ -54,9 +55,9 @@ def get_config(name, defval=None):
 
 def wifi_connect():
     sta_if = network.WLAN(network.STA_IF)
+    ap_if = network.WLAN(network.AP_IF)
 
     if get_config("wifi_ap_enabled", False) is True:
-        ap_if = network.WLAN(network.AP_IF)
         ap_if.active(True)
         ap_if.config(essid=get_config("wifi_ap_ssid"),
                      authmode=int(get_config("wifi_ap_auth", 0)),
@@ -66,27 +67,39 @@ def wifi_connect():
                         get_config("wifi_ap_netmask"),
                         "0.0.0.0",
                         "0.0.0.0"))
+    else:
+        ap_if.active(False)
+
 
     if not sta_if.isconnected():
-        if sta_if.status() == 255:
+        if sta_if.status() in (255, 1000):
             sta_if.active(True)
         if sta_if.status() not in (network.STAT_CONNECTING, network.STAT_GOT_IP):
-            sta_if.config(dhcp_hostname=get_config("hostname"))
+            try:
+                sta_if.config(dhcp_hostname=get_config("hostname"))
+            except OSError:
+                pass
+
             sta_if.connect(get_config("wifi_ssid"), get_config("wifi_passwd"))
         t1 = utime.ticks_ms()
         while sta_if.status() != network.STAT_GOT_IP and utime.ticks_ms() - t1 < get_config("wifi_timeout"):
             utime.sleep_ms(100)
             if sta_if.status() in (network.STAT_CONNECTING, network.STAT_NO_AP_FOUND):
                 pass
-            elif sta_if.status() in (network.STAT_CONNECT_FAIL, network.STAT_WRONG_PASSWORD):
+            elif (sys.platform == 'esp8266' and sta_if.status() == network.STAT_CONNECT_FAIL) or (
+                    sta_if.status() == network.STAT_WRONG_PASSWORD):
                 break
 
     return sta_if.status()
 
 
+def wifi_signal():
+    sta_if = network.WLAN(network.STA_IF)
+    return sta_if.status("rssi")
+
+
 def wifi_connected():
     sta_if = network.WLAN(network.STA_IF)
-    sta_if.config("mac")
     return sta_if.isconnected()
 
 
@@ -215,7 +228,6 @@ def wait_for_file():
     utime.sleep_ms(250)
 
 
-
 def remove_hist(file):
     files = []
     if file & 1:
@@ -235,3 +247,35 @@ def remove_hist(file):
             files_in_use[hf] = 0
         except:
             pass
+
+def get_epoch(dts):
+    tt = dts.split(" ")
+    dt = tt[0].split("-")
+    ht = tt[1].split(":")
+    ep = utime.mktime((int(dt[0]), int(dt[1]), int(dt[2]), int(ht[0]), int(ht[1]), int(ht[2]), 0, 0))
+    return ep
+
+def get_data():
+    dane = {}
+    dane["czas"] = czas()
+    dane["termometr"] = 0
+    dane["temperatura"] = int(get_config('piec_temperatura', 40))
+    dane["ostatnia_zmiana"] = get_config('piec_ostatnia_aktualizacja', '')
+
+    fs_stat = os.statvfs(os.getcwd())
+    fs_size = fs_stat[0] * fs_stat[2]
+    fs_free = fs_stat[0] * fs_stat[3]
+    dane["fs_size"] = fs_size
+    dane["fs_free"] = fs_free
+    dane["mem_free"] = gc.mem_free()
+    dane["mem_size"] = gc.mem_alloc() + dane["mem_free"]
+    dane["rssi"] = wifi_signal()
+
+    times = get_config('piec_czasy', {})
+    tm = ''
+    for t in sorted(times):
+        tm += t + ' - ' + str(times[t]) + '\n'
+
+    dane["harmonogram"] = tm
+
+    return dane

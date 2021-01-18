@@ -1,8 +1,6 @@
 import utils
 import json
 import sensors
-import os
-import gc
 import utime
 
 
@@ -37,26 +35,11 @@ def get_header(mime_type):
 def handle_api(socket, request):
     if request["url"].find("/api/dane.json") > -1:
         termometr = sensors.Sensory()
-        dane = {}
-        dane["czas"] = utils.czas()
+
+        dane = utils.get_data()
+        print(dane)
         dane["termometr"] = termometr.pomiar_temperatury()
-        dane["temperatura"] = int(utils.get_config('piec_temperatura', 40))
-        dane["ostatnia_zmiana"] = utils.get_config('piec_ostatnia_aktualizacja', '')
 
-        fs_stat = os.statvfs(os.getcwd())
-        fs_size = fs_stat[0] * fs_stat[2]
-        fs_free = fs_stat[0] * fs_stat[3]
-        dane["fs_size"] = fs_size
-        dane["fs_free"] = fs_free
-        dane["mem_free"] = gc.mem_free()
-        dane["mem_size"] = gc.mem_alloc() + dane["mem_free"]
-
-        times = utils.get_config('piec_czasy', {})
-        tm = ''
-        for t in sorted(times):
-            tm += t + ' - ' + str(times[t]) + '\n'
-
-        dane["harmonogram"] = tm
         socket.sendall(get_header('application/json'))
         socket.sendall(json.dumps(dane))
     elif request["url"].find("/api/clear/logs") > -1:
@@ -108,10 +91,12 @@ def send_chart_data(socket):
             data = """[{"name": "Termometr", "data": ["""
             termometr = sensors.Sensory()
             curr = termometr.pomiar_temperatury()
+            sqr = False
         else:
             file_name = 'piec.hist'
             data = """{"name": "Piec", "data": ["""
-            curr = int(utils.get_config("piec_temperatura",40))
+            curr = int(utils.get_config("piec_temperatura", 40))
+            sqr = True
 
         socket.sendall(data)
         try:
@@ -119,7 +104,6 @@ def send_chart_data(socket):
                 utime.sleep_ms(1)
 
             utils.lock_file(file_name)
-            data = []
 
             with open(file_name, 'r') as fi:
                 while True:
@@ -128,14 +112,28 @@ def send_chart_data(socket):
                         break
                     else:
                         d = buf.rstrip().split(" - ")
+
+                        if sqr and prev is not None:
+                            dp = buf.rstrip().split(" - ")
+                            dp[1] = prev
+                            dp[0] += " GMT"
+                            socket.sendall(json.dumps(dp)+',')
+
+                        prev = d[1]
+                        d[0] += " GMT"
                         socket.sendall(json.dumps(d)+',')
                 fi.close()
         except Exception as eee:
             utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name)
             utils.log_exception(eee)
 
-        d = [utils.czas(True), curr]
+        if sqr:
+            d = [utils.czas(True)+' GMT', prev]
+            socket.sendall(json.dumps(d)+",")
+
+        d = [utils.czas(True)+' GMT', curr]
         socket.sendall(json.dumps(d))
+
         if i == 1:
             socket.sendall("""]},""")
         else:

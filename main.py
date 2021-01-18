@@ -8,7 +8,6 @@ import machine
 import gc
 import web
 
-
 class Piec:
     def __init__(self, devices):
         self.devices = devices
@@ -76,7 +75,7 @@ class Piec:
 
         (y, m, d, hh, mm, ss, wd, yd) = utime.localtime(utime.time() + 1 * 3600)
 
-        if y == 2000:
+        if y <= 2000:
             return
 
         if self.lh == hh and self.lm == mm:
@@ -187,24 +186,31 @@ class Piec:
                 self.devices.write_display(5, 0)
         self.btn_val = val
 
+    def init_socket(self):
+        utils.log_message('INIT SOCKET')
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.sock.bind(('', 80))
+            self.sock.listen(5)
+        except OSError as serr:
+            self.sock.close()
+            self.sock = None
+            utils.log_message('SOCKET ERROR')
+            utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
+            utils.log_exception(serr)
+
     def init_wifi(self):
         if utils.wifi_connected() is False:
 
             utils.wifi_connect()
             if utils.wifi_connected() is True:
-                try:
-                    if self.sock is not None:
-                        self.sock.close()
-                    self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                    self.sock.bind(('', 80))
-                    self.sock.listen(5)
-                except OSError as serr:
+                if self.sock is not None:
                     self.sock.close()
-                    utils.log_message('SOCKET ERROR')
-                    utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
-                    utils.log_exception(serr)
-                    utils.wifi_disconnect()
+                    self.sock = None
+
+                if self.sock is None:
+                    self.init_socket()
 
     def run(self):
         wifid = 0
@@ -222,6 +228,10 @@ class Piec:
                                 utils.log_message('WEB ERROR')
                                 utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
                                 utils.log_exception(error)
+
+                                self.sock.close()
+                                self.sock = None
+                                self.init_socket()
                 else:
                     wifid += 1
                     utils.log_message('WIFI DOWN')
@@ -229,12 +239,13 @@ class Piec:
                         utils.log_message('WIFI RECONNECT')
                         utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
                         utils.wifi_disconnect()
-                        machine.soft_reset()
+                        machine.reset()
                         wifid = 0
 
                 self.handle_timer()
 
                 self.devices.display_temperature()
+                self.devices.move_servo(utils.map_temp_to_servo(int(utils.get_config("piec_temperatura", 40))))
 
             else:
 

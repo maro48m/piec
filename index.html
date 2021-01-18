@@ -145,12 +145,13 @@
             document.getElementById('fs_free').innerHTML = dane['fs_free'];
             document.getElementById('mem_free').innerHTML = dane['mem_free'];
             document.getElementById('mem_size').innerHTML = dane['mem_size'];
+            document.getElementById('rssi').innerHTML = dane['rssi'];
+            rssi
 
             document.getElementById("savebtn").disabled = false;
 
             xmlDoc.onload = function(){
                 var dane = JSON.parse(xmlDoc.responseText);
-                console.log(dane)
                 chart.updateSeries(dane)
             };
             xmlDoc.open("GET", "api/chart.json?" + new Date().getTime(), true);
@@ -240,6 +241,9 @@
         </div>
         <div class="label">
             Miejsce całkowite/wolne: <span id="fs_size"></span>/<span id="fs_free"></span>
+        </div>
+        <div class="label">
+            Sygnał WiFi: <span id="rssi"></span>
         </div>
     </div>
     <br>
@@ -347,7 +351,7 @@
             <path fill="currentColor" d="M16,11.78L20.24,4.45L21.97,5.45L16.74,14.5L10.23,10.75L5.46,19H22V21H2V3H4V17.54L9.5,8L16,11.78Z" />
         </svg>
         </span>
-        <span class="align">Wykres zmian temperatury</span>
+        <span class="align">Wykres zmian temperatury <button onclick="loadData()" class="refreshbtn">Odśwież</button></span>
     </div>
     <div class="inner-wrap">
         <div>
@@ -401,6 +405,11 @@
                         hour: 'HH:mm'
                     }
                 }
+            }
+        },
+        tooltip:{
+            x:{
+                format:"dd MMM HH:mm"
             }
         }
     };
