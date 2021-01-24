@@ -1,12 +1,12 @@
-import devices
 import utils
 import utime
 import usocket as socket
 import select
 import machine
-
+import devices
 import gc
 import web
+
 
 class Piec:
     def __init__(self, devices):
@@ -24,24 +24,31 @@ class Piec:
         self.state = 1  # 0-sleep, 1 - display, 2 - edit
         self.edit_state = 0
 
-
     def set_temperature(self, new_temp, zapisz=True):
         czas = utils.czas()
         if zapisz is True and utils.get_config("piec_historia_temperatury", True) is True:
-            utils.set_config("piec_ostatnia_aktualizacja", czas)
+            if utime.localtime(utime.time() + 1 * 3600)[0] > 2000:
+                utils.set_config("piec_ostatnia_aktualizacja", czas)
         curr_temp = int(utils.get_config("piec_temperatura"))
 
-        if curr_temp < new_temp <= (int(utils.get_config("piec_temperatura_max", 90)) - 5):
-            set_temp = new_temp + 5
+        if curr_temp < new_temp <= (int(utils.get_config("piec_temperatura_max", 90)) - int(utils.get_config("piec_temperatura_wg", 5))):
+            set_temp = new_temp + int(utils.get_config("piec_temperatura_wg", 5))
             self.devices.move_servo(utils.map_temp_to_servo(set_temp))
 
             utime.sleep_ms(1000)
 
-        utils.log_message('SET TEMPERATURE: %s' % (str(new_temp)))
+        elif curr_temp > new_temp >= (int(utils.get_config("piec_temperatura_min", 30)) + int(utils.get_config("piec_temperatura_wd", 2))):
+            set_temp = new_temp - int(utils.get_config("piec_temperatura_wd", 2))
+            self.devices.move_servo(utils.map_temp_to_servo(set_temp))
+
+            utime.sleep_ms(1000)
+
+        # utils.log_message('SET TEMPERATURE: %s' % (str(new_temp)))
         self.devices.move_servo(utils.map_temp_to_servo(new_temp))
         utils.set_config("piec_temperatura", int(new_temp))
         if zapisz is True and utils.get_config("piec_historia_temperatury", True) is True:
-            utils.save_to_hist(new_temp, 'piec.hist')
+            if utime.localtime(utime.time() + 1 * 3600)[0] > 2000:
+                utils.save_to_hist(new_temp, 'piec.hist')
 
         utime.sleep_ms(150)
 
@@ -50,7 +57,6 @@ class Piec:
 
     def save_times(self, times):
         tms = {}
-        # times = times.replace("%3A", ":").replace("%20-%20", " - ")
         while times != '':
             r = times[0:10]
             if r != '':
@@ -59,6 +65,7 @@ class Piec:
                 tms[key] = int(val)
             times = times[10:]
         utils.set_config("piec_czasy", tms)
+        del tms
 
     def web_save(self, temp, times):
         tmp = int(temp)
@@ -90,8 +97,12 @@ class Piec:
                 th = str(hh)
             if int(th) == hh and tm == mm:
                 tmp = times[t]
-                utils.log_message('HANDLE TIME %2d:%2d - %s' % (int(th), int(tm), tmp))
-                self.set_temperature(int(tmp))
+                curr_tmp = int(utils.get_config("piec_temperatura", tmp))
+                if int(tmp) != curr_tmp:
+                    # utils.log_message('HANDLE TIME %2d:%2d - %s' % (int(th), int(tm), tmp))
+                    self.set_temperature(int(tmp))
+        del times
+
         if utils.get_config('piec_historia_termometru', True):
             if mm % int(utils.get_config("piec_historia_termometru_czas", 5)) == 0 and self.ltm != mm:
                 self.devices.thermometer_value(utils.get_config('piec_historia_termometru', True))
@@ -117,7 +128,11 @@ class Piec:
 
         conn.settimeout(None)
         rq = web.parse_request(request)
-        utils.log_message('WEB REQUEST')
+
+        # utils.log_message('WEB REQUEST')
+        # utils.log_message(request)
+
+        del request
         utils.log_message(rq)
         handled = False
         url = rq["url"]
@@ -128,26 +143,21 @@ class Piec:
             times = url[url.find("times=") + len("times="):url.find("&timesEnd")]
             self.web_save(temp, times)
         elif url.find("/hist/termo") > -1:
-            conn.sendall(web.get_header('text/html'))
-            web.send_file(conn, 'hist_termo.html', 'r')
-            handled = True
+            handled = web.send_file(conn, 'hist_termo.html', 'text/html')
         elif url.find("/hist/piec") > -1:
-            conn.sendall(web.get_header('text/html'))
-            web.send_file(conn, 'hist_piec.html', 'r')
-            handled = True
+            handled = web.send_file(conn, 'hist_piec.html', 'text/html')
         elif url.find("/params") > -1:
-            conn.sendall(web.get_header('text/html'))
-            web.send_file(conn, 'params.html', 'r')
-            handled = True
+            handled = web.send_file(conn, 'params.html', 'text/html')
         elif url.find("/logs") > -1:
-            conn.sendall(web.get_header('text/html'))
-            web.send_file(conn, 'logs.html', 'r')
-            handled = True
-
+            handled = web.send_file(conn, 'logs.html', 'text/html')
+        elif url.find("/logs") > -1:
+            handled = web.send_file(conn, 'logs.html', 'text/html')
+        elif url.find("/fileup") > -1:
+            handled = web.send_file(conn, 'fileup.html', 'text/html')
         if not handled:
-            conn.sendall(web.get_header('text/html'))
-            web.send_file(conn, 'index.html')
-        utils.log_message('WEB REQUEST DONE')
+            web.send_file(conn, 'index.html', 'text/html')
+        del rq
+        # utils.log_message('WEB REQUEST DONE')
         utime.sleep(1)
         conn.close()
 
@@ -187,7 +197,7 @@ class Piec:
         self.btn_val = val
 
     def init_socket(self):
-        utils.log_message('INIT SOCKET')
+        # utils.log_message('INIT SOCKET')
         try:
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -236,7 +246,7 @@ class Piec:
                     wifid += 1
                     utils.log_message('WIFI DOWN')
                     if wifid > 10:
-                        utils.log_message('WIFI RECONNECT')
+                        utils.log_message('REBOOT!')
                         utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
                         utils.wifi_disconnect()
                         machine.reset()

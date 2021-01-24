@@ -29,20 +29,21 @@
             border: 1px solid #257C9E;
         }
 
-        .piec textarea {
+        .piec .label {
+            font: 24px Helvetica, sans-serif;
+            padding-bottom: 5px;
+
+        }
+
+        .piec input[type="file"]{
             display: block;
-            font-size: 16px;
+            font-size: 24px;
             box-sizing: border-box;
             width: 100%;
             padding: 8px;
             border-radius: 6px;
             border: 2px solid #fff;
             box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.33);
-        }
-        @media(max-width: 767px){
-            .piec textarea{
-                font-size: 16px;
-            }
         }
 
         .piec .section {
@@ -93,37 +94,93 @@
             height: 32px;
             margin-top: 5px;
         }
-
-        .clearbtn {
-            background: #cc3300 !important;
-            border: 1px solid #992600 !important;
+        .savebtn {
+            background: #00cc00 !important;
+            border: 1px solid #009900 !important;
         }
     </style>
 
     <script>
-        var xmlDoc = null;
+        /*function fileUpload(){
+            var myFile = document.getElementById('file');
+            var files = myFile.files;
+            var formData = new FormData();
+            var file = files[0];
+            formData.append('file', file, file.name);
 
-        function loadData() {
-            xmlDoc = new XMLHttpRequest();
-            xmlDoc.onload = process;
-            xmlDoc.open("GET", "api/logs?" + new Date().getTime(), true);
-            xmlDoc.send(null);
+            // Set up the request
+            var xmlDoc = new XMLHttpRequest();
+
+            xmlDoc.open('POST', '/api/file', true);
+
+            // Set up a handler for when the task for the request is complete
+            xmlDoc.onload = function () {
+                var statusP = document.getElementById('status');
+                if (xmlDoc.status == 200) {
+                    statusP.innerHTML = xmlDoc.response;
+                } else {
+                    statusP.innerHTML = 'BŁĄD!';
+                }
+            };
+
+            // Send the data.
+            xmlDoc.send(formData);
+        }*/
+        function fileUpload(){
+            var myFile = document.getElementById('file');
+            var files = myFile.files;
+            var file = files[0];
+            var size = file.size;
+            var sliceSize = 1024; // Send 10MB Chunks
+            var chunks = Math.ceil(size / sliceSize);
+
+            send(file, 0, sliceSize,sliceSize,size,chunks,1);
         }
 
-        function process() {
-            document.getElementById('hist').value = xmlDoc.responseText;
+        function send(file, start, end,sliceSize,size,chunks,chunk) {
+            var formdata = new FormData();
+            var statusEl = document.getElementById('status');
+            var xhr = new XMLHttpRequest();
+
+            if (size - end < 0) { // Uses a closure on size here you could pass this as a param
+                end = size;
+            }
+            if (end < size) {
+                xhr.onload = function () {
+                    if (xhr.readyState === XMLHttpRequest.DONE) {
+                        send(file, start + sliceSize, start + (sliceSize * 2), sliceSize, size, chunks, chunk+1)
+                    }
+                }
+            } else {
+
+            }
+
+            xhr.open('POST', '/api/file', true);
+
+            var slicedPart = slice(file, start, end);
+
+            formdata.append('start', start);
+            formdata.append('end', end);
+            formdata.append('chunks', chunks);
+            formdata.append('chunk', chunk);
+            formdata.append('file_name', file.name);
+            formdata.append('file', slicedPart);
+            statusEl.innerHTML = chunk +"/"+chunks +"("+end+"/"+file.size+")";
+
+            xhr.send(formdata);
         }
 
-        function clearLogs(){
-            xmlDoc = new XMLHttpRequest();
-            xmlDoc.onload = loadData;
-            xmlDoc.open("GET", "/api/clear/logs?" + new Date().getTime(), true);
-            xmlDoc.send(null);
+        function slice(file, start, end) {
+            var slice = file.mozSlice ? file.mozSlice :
+                file.webkitSlice ? file.webkitSlice :
+                    file.slice ? file.slice : noop;
+
+            return slice.bind(file)(start, end);
         }
 
-        window.onload = function () {
-            loadData();
-        };
+        function noop() {
+
+        }
     </script>
     <title>Kontrola pieca</title>
 </head>
@@ -151,16 +208,20 @@
                           18.36C8.27,20 10.5,21 13,21A9,9 0 0,0 22,12A9,9 0 0,0 13,3"/>
                 </svg>
             </span>
-        <span class="align">Logi systemowe</span>
+        <span class="align">Aktualizacja plików</span>
     </div>
+    <form action="javascript:void(0);">
     <div class="inner-wrap">
-        <textarea rows="20" id="hist"></textarea>
-        <br>
+        <div class="label">Plik: <input type="file" id="file"></div>
+        <div class="label">Status: <span id="status"></span></div>
+        <div class="label">Restart kontrolera po aktualizacji: <input type="checkbox" id="reboot"></div>
         <div>
-        <button><a href="/">Powrót</a></button>
-            <button class="clearbtn" onclick="clearLogs()">Wyczyść logi</button>
+            <button><a href="/">Powrót</a></button>
+            <button class="savebtn" onclick="fileUpload()">Aktualizuj plik</button>
         </div>
     </div>
+    </form>
+
 </div>
 </body>
 </html>

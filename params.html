@@ -156,6 +156,8 @@
             document.getElementById('servo_max').value = dane['servo_max'];
             document.getElementById('piec_temperatura_min').value = dane['piec_temperatura_min'];
             document.getElementById('piec_temperatura_max').value = dane['piec_temperatura_max'];
+            document.getElementById('piec_temperatura_wg').value = dane['piec_temperatura_wg'];
+            document.getElementById('piec_temperatura_wd').value = dane['piec_temperatura_wd'];
             document.getElementById('piec_historia_temperatury').checked = dane['piec_historia_temperatury'];
             document.getElementById('button_pin').value = dane['button_pin'];
             document.getElementById('thermometer_pin').value = dane['thermometer_pin'];
@@ -193,6 +195,8 @@
                 'servo_max': document.getElementById('servo_max').value,
                 'piec_temperatura_min': document.getElementById('piec_temperatura_min').value,
                 'piec_temperatura_max': document.getElementById('piec_temperatura_max').value,
+                'piec_temperatura_wg': document.getElementById('piec_temperatura_wg').value,
+                'piec_temperatura_wd': document.getElementById('piec_temperatura_wd').value,
                 'piec_historia_temperatury': document.getElementById('piec_historia_temperatury').checked,
                 'piec_historia_termometru_czas': document.getElementById('piec_historia_termometru_czas').value,
                 'button_pin': document.getElementById('button_pin').value,
@@ -274,6 +278,8 @@
             <div class="label">maksymalna pozycja serwo: <input type="number" id="servo_max"></div>
             <div class="label">Minimalna temperatura: <input type="number" id="piec_temperatura_min"></div>
             <div class="label">Maksymalna temperatura: <input type="number" id="piec_temperatura_max"></div>
+            <div class="label">Maksymalna temperatura: <input type="number" id="piec_temperatura_wg"></div>
+            <div class="label">Maksymalna temperatura: <input type="number" id="piec_temperatura_wd"></div>
             <div class="label">Rejestruj historię zmian temperatury: <input type="checkbox"
                                                                             id="piec_historia_temperatury">
             </div>

@@ -9,13 +9,15 @@
   "wifi_ssid": "zrodlo",
   "wifi_passwd": "LothLorien.#13",
   "wifi_timeout": 15000,
-  "hostname": "piec",
+  "hostname": "piec2",
   "ntp_server": "0.pl.pool.ntp.org",
   "ntp_enabled": true,
 
   "piec_temperatura": 45,
   "piec_temperatura_min": 30,
   "piec_temperatura_max": 90,
+  "piec_temperatura_wg": 5,
+  "piec_temperatura_wd": 2,
   "piec_czasy": {
     "06:30": 45,
     "22:00": 40

@@ -3,15 +3,15 @@ import json
 import sensors
 import utime
 
-
-def send_file(socket, file_name, mode='r'):
+def send_file(socket, file_name, header):
+    socket.sendall(get_header(header))
     try:
         while utils.file_locked(file_name):
             utime.sleep_ms(1)
 
         utils.lock_file(file_name)
 
-        with open(file_name, mode) as fi:
+        with open(file_name, 'r') as fi:
             while True:
                 buf = fi.read(128)
                 if str(buf) == '':
@@ -26,6 +26,8 @@ def send_file(socket, file_name, mode='r'):
 
     utils.wait_for_file()
     utils.unlock_file(file_name)
+    del buf
+    return True
 
 
 def get_header(mime_type):
@@ -34,11 +36,11 @@ def get_header(mime_type):
 
 def handle_api(socket, request):
     if request["url"].find("/api/dane.json") > -1:
-        termometr = sensors.Sensory()
 
+        termometr = sensors.Sensory()
         dane = utils.get_data()
-        print(dane)
         dane["termometr"] = termometr.pomiar_temperatury()
+        del termometr
 
         socket.sendall(get_header('application/json'))
         socket.sendall(json.dumps(dane))
@@ -62,25 +64,24 @@ def handle_api(socket, request):
         socket.sendall(get_header('application/json'))
         socket.sendall(json.dumps(utils.config))
     elif request["url"].find("/api/params_save") > -1:
-        p = json.loads(request["body"])
-        print(utils.config)
-        utils.config.update(p)
-        print(utils.config)
-        utils.save_config()
+        utils.update_config(request["body"].decode('utf-8'))
         socket.sendall(get_header('application/json'))
         socket.sendall('OK')
     elif request["url"].find("/api/logs") > -1:
-        socket.sendall(get_header('text/plain'))
-        send_file(socket, 'log.txt', 'r')
+        send_file(socket, 'log.txt', 'text/plain')
     elif request["url"].find("/api/hist_piec") > -1:
-        socket.sendall(get_header('text/plain'))
-        send_file(socket, 'piec.hist', 'r')
+        send_file(socket, 'piec.hist', 'text/plain')
     elif request["url"].find("/api/hist_termo") > -1:
-        socket.sendall(get_header('text/plain'))
-        send_file(socket, 'termometr.hist', 'r')
+        send_file(socket, 'termometr.hist', 'text/plain')
     elif request["url"].find("/api/chart.json") > -1:
         socket.sendall(get_header('application/json'))
         send_chart_data(socket)
+    elif request["url"].find("/api/file") > -1:
+        socket.sendall(get_header('text/plain'))
+        if upload_file(request):
+            socket.sendall('Aktualizacja pomyślna')
+        else:
+            socket.sendall('Błąd aktualizacji')
     return True
 
 
@@ -91,13 +92,14 @@ def send_chart_data(socket):
             data = """[{"name": "Termometr", "data": ["""
             termometr = sensors.Sensory()
             curr = termometr.pomiar_temperatury()
+            del termometr
             sqr = False
         else:
             file_name = 'piec.hist'
             data = """{"name": "Piec", "data": ["""
             curr = int(utils.get_config("piec_temperatura", 40))
             sqr = True
-
+        prev = None
         socket.sendall(data)
         try:
             while utils.file_locked(file_name):
@@ -142,49 +144,7 @@ def send_chart_data(socket):
         utils.wait_for_file()
         utils.unlock_file(file_name)
 
-
-_hextobyte_cache = None
-
-
-def unquote(string):
-    """unquote('abc%20def') -> b'abc def'."""
-    global _hextobyte_cache
-
-    # Note: strings are encoded as UTF-8. This is only an issue if it contains
-    # unescaped non-ASCII characters, which URIs should not.
-    if not string:
-        return b''
-
-    if isinstance(string, str):
-        string = string.encode('utf-8')
-
-    bits = string.split(b'%')
-    if len(bits) == 1:
-        return string
-
-    res = [bits[0]]
-    append = res.append
-
-    # Build cache for hex to char mapping on-the-fly only for codes
-    # that are actually used
-    if _hextobyte_cache is None:
-        _hextobyte_cache = {}
-
-    for item in bits[1:]:
-        try:
-            code = item[:2]
-            char = _hextobyte_cache.get(code)
-            if char is None:
-                char = _hextobyte_cache[code] = bytes([int(code, 16)])
-            append(char)
-            append(item[2:])
-        except KeyError:
-            append(b'%')
-            append(item)
-
-    return b''.join(res)
-
-
+# r1 = b'POST /api/file HTTP/1.1\r\nHost: 192.168.0.136\r\nConnection: keep-alive\r\nContent-Length: 693\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36 OPR/73.0.3856.344\r\nContent-Type: multipart/form-data; boundary=----WebKitFormBoundaryyWZOmCEmrqIYb3Zj\r\nAccept: */*\r\nOrigin: http://192.168.0.136\r\nReferer: http://192.168.0.136/fileup\r\nAccept-Encoding: gzip, deflate\r\nAccept-Language: pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7\r\n\r\n------WebKitFormBoundaryyWZOmCEmrqIYb3Zj\r\nContent-Disposition: form-data; name="start"\r\n\r\n0\r\n------WebKitFormBoundaryyWZOmCEmrqIYb3Zj\r\nContent-Disposition: form-data; name="end"\r\n\r\n128\r\n------WebKitFormBoundaryyWZOmCEmrqIYb3Zj\r\nContent-Disposition: form-data; name="chunks"\r\n\r\n2\r\n------WebKitFormBoundaryyWZOmCEmrqIYb3Zj\r\nContent-Disposition: form-data; name="chunk"\r\n\r\n1\r\n------WebKitFormBoundaryyWZOmCEmrqIYb3Zj\r\nContent-Disposition: form-data; name="file"; filename="blob"\r\nContent-Type: application/octet-stream\r\n\r\n192.168.1.1\r\nw grupe \xb3\xb9czno\x9\xe6 guzik trybika\r\nzalogowa\xe6 si\xea (admin/admin)\r\nnajecha\xe6 na po\xb3\xb9czenie->zarz\xb9dzanie PIN\r\nzapami\xeatywani\r\n------WebKitFormBoundaryyWZOmCEmrqIYb3Zj--\r\n'
 def parse_request(request):
     ret = {"url": "", "method": ""}
     if request == b'':
@@ -193,23 +153,60 @@ def parse_request(request):
     lines = request.split(b'\r\n')
 
     urls = lines[0].split(b' ')
-    ret["url"] = unquote(urls[1]).decode('ascii')
-    ret["method"] = unquote(urls[0]).decode('ascii')
-    ret["proto"] = unquote(urls[2]).decode('ascii')
+    ret["url"] = utils.unquote(urls[1]).decode('ascii')
+    ret["method"] = utils.unquote(urls[0]).decode('ascii')
+    ret["proto"] = utils.unquote(urls[2]).decode('ascii')
+
+    del urls
+
     headers = {}
     body = b''
-    hdr_end = False
+    hdr = True
     for line in lines[1:]:
-        line = unquote(line)
-        if line == b'':
-            hdr_end = True
-        else:
-            if hdr_end:
-                body = line
+        if hdr:
+            if line == b'':
+                hdr = False
             else:
+                line = utils.unquote(line)
                 hdr = line.split(b': ')
                 headers[hdr[0].decode('ascii')] = hdr[1].decode('ascii')
+        else:
+            body += line+b'\r\n'
 
     ret["headers"] = headers
-    ret["body"] = body.decode('ascii')
+    ret["body"] = body
+    del lines
+    del hdr
     return ret
+
+
+def upload_file(request):
+    #Content-Type': 'multipart/form-data; boundary=----WebKitFormBoundaryUdPTIt4xUUzNAXmx
+    # -- ----WebKitFormBoundaryUdPTIt4xUUzNAXmx
+    # Content-Disposition: form-data; name="start"
+    #
+    # 640
+    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx
+    # Content-Disposition: form-data; name="end"
+    #
+    # 768
+    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx
+    # Content-Disposition: form-data; name="chunks"
+    #
+    # 86
+    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx
+    # Content-Disposition: form-data; name="chunk"
+    #
+    # 6
+    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx
+    # Content-Disposition: form-data; name="file_name"
+    #
+    # main.py
+    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx
+    # Content-Disposition: form-data; name="file"; filename="blob"
+    # Content-Type: application/octet-stream
+    #
+    # utils.get_config("piec_historia_temperatury", True) is True:\r\n            if utime.localtime(utime.time() + 1 * 3600)[0] > 2000:
+    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx--
+
+    return True
