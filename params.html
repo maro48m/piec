@@ -132,7 +132,7 @@
         function loadData() {
             xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
-            xmlDoc.open("GET", "api/config.json?" + new Date().getTime(), true);
+            xmlDoc.open("GET", "api/config.json?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 

@@ -1,3 +1,5 @@
+# TODO: przewijanie ustawień na wyświetlaczu
+
 import utils
 import utime
 import usocket as socket
@@ -130,10 +132,8 @@ class Piec:
         rq = web.parse_request(request)
 
         # utils.log_message('WEB REQUEST')
-        # utils.log_message(request)
-
+        # utils.log_message(rq)
         del request
-        utils.log_message(rq)
         handled = False
         url = rq["url"]
         if url.find("/api/") > -1:
@@ -206,9 +206,9 @@ class Piec:
         except OSError as serr:
             self.sock.close()
             self.sock = None
-            utils.log_message('SOCKET ERROR')
-            utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
-            utils.log_exception(serr)
+            # utils.log_message('SOCKET ERROR')
+            # utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
+            # utils.log_exception(serr)
 
     def init_wifi(self):
         if utils.wifi_connected() is False:
@@ -235,19 +235,19 @@ class Piec:
                                 conn, addr = self.sock.accept()
                                 self.handle_web(conn, addr)
                             except OSError as error:
-                                utils.log_message('WEB ERROR')
-                                utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
-                                utils.log_exception(error)
+                                # utils.log_message('WEB ERROR')
+                                # utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
+                                # utils.log_exception(error)
 
                                 self.sock.close()
                                 self.sock = None
                                 self.init_socket()
                 else:
                     wifid += 1
-                    utils.log_message('WIFI DOWN')
+                    # utils.log_message('WIFI DOWN')
                     if wifid > 10:
-                        utils.log_message('REBOOT!')
-                        utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
+                        # utils.log_message('REBOOT!')
+                        # utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())))
                         utils.wifi_disconnect()
                         machine.reset()
                         wifid = 0
@@ -278,10 +278,10 @@ devices = devices.Devices()
 
 while True:
     try:
-        utils.log_message('INIT')
+        # utils.log_message('INIT')
         p = Piec(devices)
         p.set_temperature(int(utils.get_config("piec_temperatura", 40)), False)
-        utils.log_message('RUN')
+        # utils.log_message('RUN')
         p.run()
     except Exception as err:
         utils.log_message('GENERAL EXCEPTION')

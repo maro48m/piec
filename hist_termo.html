@@ -105,7 +105,7 @@
         function loadData() {
             xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
-            xmlDoc.open("GET", "api/hist_termo?" + new Date().getTime(), true);
+            xmlDoc.open("GET", "api/hist_termo?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 
@@ -116,7 +116,7 @@
         function clearLogs(){
             xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = loadData;
-            xmlDoc.open("GET", "/api/clear/hist_termo?" + new Date().getTime(), true);
+            xmlDoc.open("GET", "/api/clear/hist_termo?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 

@@ -47,8 +47,9 @@
             border: 2px solid #fff;
             box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.33);
         }
-        @media(max-width: 767px){
-            .piec input, .piec textarea{
+
+        @media (max-width: 767px) {
+            .piec input, .piec textarea {
                 font-size: 24px;
             }
         }
@@ -124,55 +125,69 @@
     </style>
 
     <script>
-        var xmlDoc = null;
+        var chartfile = 'termo';
 
         function loadData() {
-            xmlDoc = new XMLHttpRequest();
+            var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
-            xmlDoc.open("GET", "api/dane.json?" + new Date().getTime(), true);
+            chartfile = 'termo';
+            chunk = 1;
+            xmlDoc.open("GET", "api/dane.json?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 
-        function process() {
-            var dane = JSON.parse(xmlDoc.responseText);
-            document.getElementById('czas').innerHTML = dane['czas'];
-            document.getElementById('termometr').innerHTML = dane['termometr'];
-            document.getElementById('ostatnia_zmiana').innerHTML = dane['ostatnia_zmiana'];
-            document.getElementById('temperatura').value = dane['temperatura'];
-            document.getElementById('harmonogram').value = dane['harmonogram'];
+        function process(data) {
+            try {
+                var dane = JSON.parse(data.target.responseText);
+                document.getElementById('czas').innerHTML = dane['czas'];
+                document.getElementById('termometr').innerHTML = dane['termometr'];
+                document.getElementById('ostatnia_zmiana').innerHTML = dane['ostatnia_zmiana'];
+                document.getElementById('temperatura').value = dane['temperatura'];
+                document.getElementById('harmonogram').value = dane['harmonogram'];
 
-            document.getElementById('fs_size').innerHTML = dane['fs_size'];
-            document.getElementById('fs_free').innerHTML = dane['fs_free'];
-            document.getElementById('mem_free').innerHTML = dane['mem_free'];
-            document.getElementById('mem_size').innerHTML = dane['mem_size'];
-            document.getElementById('rssi').innerHTML = dane['rssi'];
+                document.getElementById('fs_size').innerHTML = dane['fs_size'];
+                document.getElementById('fs_free').innerHTML = dane['fs_free'];
+                document.getElementById('mem_free').innerHTML = dane['mem_free'];
+                document.getElementById('mem_size').innerHTML = dane['mem_size'];
+                document.getElementById('rssi').innerHTML = dane['rssi'];
 
-            document.getElementById("savebtn").disabled = false;
+                document.getElementById("savebtn").disabled = false;
+                chart.updateSeries([{"name": "Termometr", "data": []}, {"name": "Piec", "data": []}])
+                chartfile = 'termo';
+                loadChart();
+            } catch (e) {
+                loadData();
+                return;
+            }
 
-            xmlDoc.onload = function(){
-                var dane = JSON.parse(xmlDoc.responseText);
-                chart.updateSeries(dane)
-            };
-            xmlDoc.open("GET", "api/chart.json?" + new Date().getTime(), true);
-            xmlDoc.send(null);
         }
 
         window.onload = function () {
             loadData();
         };
 
+        function loadChart() {
+            var xmlDoc = new XMLHttpRequest();
+            xmlDoc.onload = updateChart;
+            xmlDoc.open("GET", "api/chart.json?file=" + chartfile + "&d=" + new Date().getTime(), true);
+            xmlDoc.send(null);
+        }
+
+        function updateChart(data) {
+            try {
+                var dane = JSON.parse(data.target.responseText);
+                chart.appendData(dane);
+            } catch (e) {
+                loadChart();
+            }
+        }
+
         function saveData() {
-            xmlDoc = new XMLHttpRequest();
+            var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = loadData;
             var temp = document.getElementById('temperatura').value;
             var harm = document.getElementById('harmonogram').value;
             xmlDoc.open("POST", "save?temp=" + temp + "&tempEnd=?times=" + harm + "&timesEnd=&d=" + new Date().getTime(), true);
-            xmlDoc.send(null);
-        }
-
-        function clearLogs(){
-            xmlDoc = new XMLHttpRequest();
-            xmlDoc.open("GET", "/api/clear/all?" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
     </script>
@@ -247,17 +262,17 @@
     </div>
     <br>
     <form action="javascript:void(0);">
-    <div class="section">
+        <div class="section">
             <span class="align" style="height: 22px">
                 <svg class="svgimg" viewBox="0 0 24 24">
                     <path fill="currentColor"
                           d="M15 13V5A3 3 0 0 0 9 5V13A5 5 0 1 0 15 13M12 4A1 1 0 0 1 13 5V12H11V5A1 1 0 0 1 12 4Z"/>
                 </svg>
             </span>
-        <span class="align">Temperatura pieca</span>
-    </div>
-    <div class="inner-wrap">
-        <div class="label">
+            <span class="align">Temperatura pieca</span>
+        </div>
+        <div class="inner-wrap">
+            <div class="label">
                 <span class="align" style="height: 22px">
                     <svg class="svgimg" viewBox="0 0 24 24">
                         <path fill="currentColor"
@@ -267,9 +282,9 @@
                             0 0,0 22,12A9,9 0 0,0 13,3"/>
                     </svg>
                 </span>
-            <span class="align">Ostatnia zmiana: <span id="ostatnia_zmiana"></span></span>
-        </div>
-        <div class="label">
+                <span class="align">Ostatnia zmiana: <span id="ostatnia_zmiana"></span></span>
+            </div>
+            <div class="label">
                 <span class="align" style="height: 22px">
                     <svg class="svgimg" viewBox="0 0 24 24">
                         <path fill="currentColor"
@@ -280,11 +295,11 @@
                             4.59 18 4.14V2M17 6C18.1 6 19 6.9 19 8S18.1 10 17 10C15.9 10 15 9.1 15 8S15.9 6 17 6Z"/>
                     </svg>
                 </span>
-            <span class="align">Ustawiona temperatura:</span>
-            <input type="number" id="temperatura" max="90" min="30">
-        </div>
-        <br>
-        <div class="label">
+                <span class="align">Ustawiona temperatura:</span>
+                <input type="number" id="temperatura" max="90" min="30">
+            </div>
+            <br>
+            <div class="label">
                 <span class="align" style="height: 22px">
                     <svg class="svgimg" viewBox="0 0 24 24">
                         <path fill="currentColor"
@@ -294,22 +309,22 @@
                             3.39L20.71,7.25L22,5.72Z"/>
                 </svg>
                 </span>
-            <span class="align" style="display: inline-block">
+                <span class="align" style="display: inline-block">
                     Harmonogram<br>
                     format hh:mm - temperatura<br>
                     (np: 22:00 - 40):</span>
-        </div>
-        <textarea rows="5" id="harmonogram"></textarea>
-        <button onclick="saveData()" class="savebtn" id="savebtn" disabled>
+            </div>
+            <textarea rows="5" id="harmonogram"></textarea>
+            <button onclick="saveData()" class="savebtn" id="savebtn" disabled>
                 <span class="align" style="height: 22px">
                     <svg class="svgimg" viewBox="0 0 24 24">
                         <path fill="currentColor"
                               d="M9,20.42L2.79,14.21L5.62,11.38L9,14.77L18.88,4.88L21.71,7.71L9,20.42Z"/>
                     </svg>
                 </span>
-            <span class="align">ZAPISZ</span>
-        </button>
-    </div>
+                <span class="align">ZAPISZ</span>
+            </button>
+        </div>
     </form>
     <br>
     <div class="section">
@@ -339,20 +354,22 @@
         <div>
             <button><a href="/logs">Plik logów</a></button>
             <button><a href="/params">Parametry</a></button>
-            <button><a href="/fileup">Aktualizacja plików</a></button>
+<!--            <button><a href="/fileup">Aktualizacja plików</a></button>-->
         </div>
     </div>
     <div class="section">
         <span class="align" style="height: 22px">
                 <svg class="svgimg" viewBox="0 0 24 24">
-            <path fill="currentColor" d="M16,11.78L20.24,4.45L21.97,5.45L16.74,14.5L10.23,10.75L5.46,19H22V21H2V3H4V17.54L9.5,8L16,11.78Z" />
+            <path fill="currentColor"
+                  d="M16,11.78L20.24,4.45L21.97,5.45L16.74,14.5L10.23,10.75L5.46,19H22V21H2V3H4V17.54L9.5,8L16,11.78Z"/>
         </svg>
         </span>
-        <span class="align">Wykres zmian temperatury <button onclick="loadData()" class="refreshbtn">Odśwież</button></span>
+        <span class="align">Wykres zmian temperatury <button onclick="loadData()"
+                                                             class="refreshbtn">Odśwież</button></span>
     </div>
     <div class="inner-wrap">
         <div>
-        <div id="chart"></div>
+            <div id="chart"></div>
         </div>
     </div>
 </div>
@@ -363,7 +380,7 @@
         chart: {
             height: 500,
             type: 'line',
-            toolbar: { tools: { download: false } },
+            toolbar: {tools: {download: false}},
             locales: [{
                 "name": "pl",
                 "options": {
@@ -404,9 +421,9 @@
                 }
             }
         },
-        tooltip:{
-            x:{
-                format:"dd MMM HH:mm"
+        tooltip: {
+            x: {
+                format: "dd MMM HH:mm"
             }
         }
     };

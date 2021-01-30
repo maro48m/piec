@@ -6,6 +6,7 @@ import utime
 def send_file(socket, file_name, header):
     socket.sendall(get_header(header))
     try:
+        buf = None
         while utils.file_locked(file_name):
             utime.sleep_ms(1)
 
@@ -20,13 +21,16 @@ def send_file(socket, file_name, header):
                     if socket is not None:
                         socket.sendall(buf)
             fi.close()
+
     except Exception as eee:
-        utils.log_message('WWW FILE ERROR %s' % file_name)
-        utils.log_exception(eee)
+        # utils.log_message('WWW FILE ERROR %s' % file_name)
+        # utils.log_exception(eee)
+        pass
 
     utils.wait_for_file()
     utils.unlock_file(file_name)
-    del buf
+    if buf is not None:
+        del buf
     return True
 
 
@@ -126,8 +130,9 @@ def send_chart_data(socket):
                         socket.sendall(json.dumps(d)+',')
                 fi.close()
         except Exception as eee:
-            utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name)
-            utils.log_exception(eee)
+            # utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name)
+            #utils.log_exception(eee)
+            pass
 
         if sqr:
             d = [utils.czas(True)+' GMT', prev]
@@ -144,7 +149,7 @@ def send_chart_data(socket):
         utils.wait_for_file()
         utils.unlock_file(file_name)
 
-# r1 = b'POST /api/file HTTP/1.1\r\nHost: 192.168.0.136\r\nConnection: keep-alive\r\nContent-Length: 693\r\nUser-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.141 Safari/537.36 OPR/73.0.3856.344\r\nContent-Type: multipart/form-data; boundary=----WebKitFormBoundaryyWZOmCEmrqIYb3Zj\r\nAccept: */*\r\nOrigin: http://192.168.0.136\r\nReferer: http://192.168.0.136/fileup\r\nAccept-Encoding: gzip, deflate\r\nAccept-Language: pl-PL,pl;q=0.9,en-US;q=0.8,en;q=0.7\r\n\r\n------WebKitFormBoundaryyWZOmCEmrqIYb3Zj\r\nContent-Disposition: form-data; name="start"\r\n\r\n0\r\n------WebKitFormBoundaryyWZOmCEmrqIYb3Zj\r\nContent-Disposition: form-data; name="end"\r\n\r\n128\r\n------WebKitFormBoundaryyWZOmCEmrqIYb3Zj\r\nContent-Disposition: form-data; name="chunks"\r\n\r\n2\r\n------WebKitFormBoundaryyWZOmCEmrqIYb3Zj\r\nContent-Disposition: form-data; name="chunk"\r\n\r\n1\r\n------WebKitFormBoundaryyWZOmCEmrqIYb3Zj\r\nContent-Disposition: form-data; name="file"; filename="blob"\r\nContent-Type: application/octet-stream\r\n\r\n192.168.1.1\r\nw grupe \xb3\xb9czno\x9\xe6 guzik trybika\r\nzalogowa\xe6 si\xea (admin/admin)\r\nnajecha\xe6 na po\xb3\xb9czenie->zarz\xb9dzanie PIN\r\nzapami\xeatywani\r\n------WebKitFormBoundaryyWZOmCEmrqIYb3Zj--\r\n'
+
 def parse_request(request):
     ret = {"url": "", "method": ""}
     if request == b'':
@@ -169,7 +174,8 @@ def parse_request(request):
             else:
                 line = utils.unquote(line)
                 hdr = line.split(b': ')
-                headers[hdr[0].decode('ascii')] = hdr[1].decode('ascii')
+                if len(hdr) == 2:
+                    headers[hdr[0].decode('ascii')] = hdr[1].decode('ascii')
         else:
             body += line+b'\r\n'
 
@@ -182,7 +188,7 @@ def parse_request(request):
 
 def upload_file(request):
     #Content-Type': 'multipart/form-data; boundary=----WebKitFormBoundaryUdPTIt4xUUzNAXmx
-    # -- ----WebKitFormBoundaryUdPTIt4xUUzNAXmx
+    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx
     # Content-Disposition: form-data; name="start"
     #
     # 640

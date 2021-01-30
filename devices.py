@@ -14,7 +14,10 @@ class Devices:
             self.servo = PWM(self.servo_pin, freq=50)
 
         if int(utils.get_config("display_pin", -1)) > -1:
-            self.spi = SPI(1, baudrate=10000000, polarity=0, phase=0)
+            if sys.platform == 'esp32':
+                self.spi = SPI(1, baudrate=10000000, polarity=1, phase=0, sck=Pin(14), mosi=Pin(13))
+            else:
+                self.spi = SPI(1, baudrate=10000000, polarity=0, phase=0)
             self.display_pin = Pin(int(utils.get_config("display_pin", 15)), Pin.OUT)
             self.display = max7219.Matrix8x8(self.spi, self.display_pin, 1)
             self.display.brightness(0)
@@ -25,9 +28,9 @@ class Devices:
             self.button = Pin(int(utils.get_config("button_pin", 5)), Pin.IN, Pin.PULL_UP)
 
         if sys.platform == 'esp8266':
-            self.adc = ADC(0)
+            self.adc = ADC(int(utils.get_config("adc_pin", 0)))
         elif sys.platform == 'esp32':
-            self.adc = ADC(Pin(32))
+            self.adc = ADC(Pin(int(utils.get_config("adc_pin", 2))))
             self.adc.atten(ADC.ATTN_11DB)
 
         if int(utils.get_config('thermometer_pin', -1)) > -1:

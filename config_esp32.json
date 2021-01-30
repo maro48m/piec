@@ -1,0 +1,11 @@
+{
+  "button_pin": 5,
+  "button_pin__comment": "D5",
+  "thermometer_pin": 25,
+  "thermometer_pin__comment": "D25",
+  "servo_pin": 4,
+  "servo_pin__comment": "D4",
+  "display_pin": 15,
+  "display_pin__comment": "D14-CLK, D13-DIN, D15-CS",
+  "adc_pin": 32
+}

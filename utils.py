@@ -31,10 +31,20 @@ def load_config():
     except Exception as err:
         print(err)
 
+    try:
+        fn = 'config_%s.json' % sys.platform
+        with open(fn) as infile:
+            cf = json.load(infile)
+            infile.close()
+            config.update(cf)
+    except Exception as err:
+        print(err)
+
 
 def save_config():
     global config
-    with open('/config.json', 'w') as outfile:
+    fn = 'config_%s.json' % sys.platform
+    with open(fn, 'w') as outfile:
         json.dump(config, outfile)
         outfile.close()
     wait_for_file()
@@ -129,7 +139,8 @@ def settime():
             ntptime.host = config["ntp_server"]
             ntptime.settime()
         except OSError as err:
-            log_exception(err)
+            # log_exception(err)
+            pass
 
 
 def clear():
@@ -195,7 +206,6 @@ def save_to_hist(val, hist_file):
     global files_in_use
     c = czas(True)
     hf = hist_file
-
     if hf in files_in_use.keys():
         while files_in_use[hf] == 1:
             utime.sleep_ms(1)
@@ -254,12 +264,14 @@ def remove_hist(file):
         except:
             pass
 
+
 def get_epoch(dts):
     tt = dts.split(" ")
     dt = tt[0].split("-")
     ht = tt[1].split(":")
     ep = utime.mktime((int(dt[0]), int(dt[1]), int(dt[2]), int(ht[0]), int(ht[1]), int(ht[2]), 0, 0))
     return ep
+
 
 def get_data():
     dane = {}

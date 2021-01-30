@@ -40,4 +40,5 @@
   "servo_max": 115,
   "display_pin": 15,
   "display_pin__comment": "D5-CLK, D7-DIN, D8-CS",
+  "adc_pin": 0
 }
