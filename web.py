@@ -1,31 +1,33 @@
 import utils
 import json
 import sensors
-import utime
+import uasyncio
+from web_helper import get_header
 
-def send_file(socket, file_name, header):
-    socket.sendall(get_header(header))
+
+async def send_file(writer, file_name, header):
+    writer.write(get_header(header).encode('utf8'))
     try:
         buf = None
         while utils.file_locked(file_name):
-            utime.sleep_ms(1)
+            await uasyncio.sleep_ms(1)
 
         utils.lock_file(file_name)
 
         with open(file_name, 'r') as fi:
             while True:
-                buf = fi.read(128)
+                buf = fi.read(4096)
                 if str(buf) == '':
                     break
                 else:
-                    if socket is not None:
-                        socket.sendall(buf)
+                    writer.write(buf.encode('utf8'))
+                    await writer.drain()
+                del buf
             fi.close()
 
     except Exception as eee:
-        # utils.log_message('WWW FILE ERROR %s' % file_name)
-        # utils.log_exception(eee)
-        pass
+        # utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name, 2)
+        utils.log_exception(eee, 2)
 
     utils.wait_for_file()
     utils.unlock_file(file_name)
@@ -34,11 +36,7 @@ def send_file(socket, file_name, header):
     return True
 
 
-def get_header(mime_type):
-    return "HTTP/1.1 200OK\n" + "Content-Type: %s\n" % mime_type + "Connection: close\n\n"
-
-
-def handle_api(socket, request):
+async def handle_api(writer, request):
     if request["url"].find("/api/dane.json") > -1:
 
         termometr = sensors.Sensory()
@@ -46,50 +44,58 @@ def handle_api(socket, request):
         dane["termometr"] = termometr.pomiar_temperatury()
         del termometr
 
-        socket.sendall(get_header('application/json'))
-        socket.sendall(json.dumps(dane))
+        writer.write(get_header('application/json'))
+        writer.write(json.dumps(dane).encode('utf-8'))
+        await writer.drain()
     elif request["url"].find("/api/clear/logs") > -1:
-        socket.sendall(get_header('text/plain'))
         utils.remove_hist(4)
-        socket.sendall('OK')
+        writer.write(get_header('application/json'))
+        writer.write('{"response":"OK"}'.encode('utf-8'))
+        await writer.drain()
     elif request["url"].find("/api/clear/hist_piec") > -1:
-        socket.sendall(get_header('text/plain'))
         utils.remove_hist(1)
-        socket.sendall('OK')
+        writer.write(get_header('application/json'))
+        writer.write('{"response":"OK"}'.encode('utf-8'))
+        await writer.drain()
     elif request["url"].find("/api/clear/hist_termo") > -1:
-        socket.sendall(get_header('text/plain'))
         utils.remove_hist(2)
-        socket.sendall('OK')
+        writer.write(get_header('application/json'))
+        writer.write('{"response":"OK"}'.encode('utf-8'))
+        await writer.drain()
     elif request["url"].find("/api/clear/all") > -1:
-        socket.sendall(get_header('text/plain'))
         utils.remove_hist(7)
-        socket.sendall('OK')
+        writer.write(get_header('application/json'))
+        writer.write('{"response":"OK"}'.encode('utf-8'))
+        await writer.drain()
     elif request["url"].find("/api/config.json") > -1:
-        socket.sendall(get_header('application/json'))
-        socket.sendall(json.dumps(utils.config))
+        writer.write(get_header('application/json'))
+        writer.write(json.dumps(utils.config).encode('utf-8'))
+        await writer.drain()
     elif request["url"].find("/api/params_save") > -1:
         utils.update_config(request["body"].decode('utf-8'))
-        socket.sendall(get_header('application/json'))
-        socket.sendall('OK')
+        writer.write(get_header('application/json'))
+        writer.write('{"response":"OK"}'.encode('utf-8'))
+        await writer.drain()
     elif request["url"].find("/api/logs") > -1:
-        send_file(socket, 'log.txt', 'text/plain')
+        await send_file(writer, 'log.txt', 'text/plain')
     elif request["url"].find("/api/hist_piec") > -1:
-        send_file(socket, 'piec.hist', 'text/plain')
+        await send_file(writer, 'piec.hist', 'text/plain')
     elif request["url"].find("/api/hist_termo") > -1:
-        send_file(socket, 'termometr.hist', 'text/plain')
+        await send_file(writer, 'termometr.hist', 'text/plain')
     elif request["url"].find("/api/chart.json") > -1:
-        socket.sendall(get_header('application/json'))
-        send_chart_data(socket)
+        writer.write(get_header('application/json'))
+        await send_chart_data(writer)
     elif request["url"].find("/api/file") > -1:
-        socket.sendall(get_header('text/plain'))
+        writer.write(get_header('application/json'))
         if upload_file(request):
-            socket.sendall('Aktualizacja pomyślna')
+            writer.write('{"response":"Aktualizacja pomyślna"}'.encode('utf-8'))
         else:
-            socket.sendall('Błąd aktualizacji')
+            writer.write('{"response":"Błąd aktualizacji"}'.encode('utf-8'))
+        await writer.drain()
     return True
 
 
-def send_chart_data(socket):
+async def send_chart_data(writer):
     for i in range(1, 3):
         if i == 1:
             file_name = 'termometr.hist'
@@ -104,10 +110,12 @@ def send_chart_data(socket):
             curr = int(utils.get_config("piec_temperatura", 40))
             sqr = True
         prev = None
-        socket.sendall(data)
+        writer.write(data.encode('utf-8'))
+        await writer.drain()
+
         try:
             while utils.file_locked(file_name):
-                utime.sleep_ms(1)
+                uasyncio.sleep_ms(1)
 
             utils.lock_file(file_name)
 
@@ -123,67 +131,37 @@ def send_chart_data(socket):
                             dp = buf.rstrip().split(" - ")
                             dp[1] = prev
                             dp[0] += " GMT"
-                            socket.sendall(json.dumps(dp)+',')
+                            writer.write((json.dumps(dp)+',').encode('utf-8'))
+                            await writer.drain()
 
                         prev = d[1]
                         d[0] += " GMT"
-                        socket.sendall(json.dumps(d)+',')
+                        writer.write((json.dumps(d)+',').encode('utf-8'))
+                        await writer.drain()
                 fi.close()
         except Exception as eee:
-            # utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name)
-            #utils.log_exception(eee)
+            #utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name, 2)
+            utils.log_exception(eee, 2)
             pass
 
         if sqr:
             d = [utils.czas(True)+' GMT', prev]
-            socket.sendall(json.dumps(d)+",")
+            writer.write((json.dumps(d)+',').encode('utf-8'))
+            await writer.drain()
 
         d = [utils.czas(True)+' GMT', curr]
-        socket.sendall(json.dumps(d))
+        writer.write(json.dumps(d).encode('utf-8'))
+        await writer.drain()
 
         if i == 1:
-            socket.sendall("""]},""")
+            writer.write("""]},""".encode('utf-8'))
         else:
-            socket.sendall("""]}]""")
+            writer.write("""]}]""".encode('utf-8'))
+
+        await writer.drain()
 
         utils.wait_for_file()
         utils.unlock_file(file_name)
-
-
-def parse_request(request):
-    ret = {"url": "", "method": ""}
-    if request == b'':
-        return ret
-
-    lines = request.split(b'\r\n')
-
-    urls = lines[0].split(b' ')
-    ret["url"] = utils.unquote(urls[1]).decode('ascii')
-    ret["method"] = utils.unquote(urls[0]).decode('ascii')
-    ret["proto"] = utils.unquote(urls[2]).decode('ascii')
-
-    del urls
-
-    headers = {}
-    body = b''
-    hdr = True
-    for line in lines[1:]:
-        if hdr:
-            if line == b'':
-                hdr = False
-            else:
-                line = utils.unquote(line)
-                hdr = line.split(b': ')
-                if len(hdr) == 2:
-                    headers[hdr[0].decode('ascii')] = hdr[1].decode('ascii')
-        else:
-            body += line+b'\r\n'
-
-    ret["headers"] = headers
-    ret["body"] = body
-    del lines
-    del hdr
-    return ret
 
 
 def upload_file(request):

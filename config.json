@@ -12,6 +12,7 @@
   "hostname": "piec2",
   "ntp_server": "0.pl.pool.ntp.org",
   "ntp_enabled": true,
+  "log_level": 3,
 
   "piec_temperatura": 45,
   "piec_temperatura_min": 30,

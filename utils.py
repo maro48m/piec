@@ -88,13 +88,13 @@ def wifi_connect():
 
 
     if not sta_if.isconnected():
-        if sta_if.status() in (255, 1000):
-            sta_if.active(True)
+        sta_if.active(True)
         if sta_if.status() not in (network.STAT_CONNECTING, network.STAT_GOT_IP):
             try:
                 sta_if.config(dhcp_hostname=get_config("hostname"))
-            except OSError:
-                pass
+            except OSError as eeee:
+                #log_message('WIFI CONNECT ERROR',2)
+                log_exception(eeee, 2)
 
             sta_if.connect(get_config("wifi_ssid"), get_config("wifi_passwd"))
         t1 = utime.ticks_ms()
@@ -126,6 +126,8 @@ def wifi_config():
 
 def wifi_disconnect():
     sta_if = network.WLAN(network.STA_IF)
+    if sta_if.isconnected():
+        sta_if.disconnect()
     sta_if.active(False)
 
     if get_config("wifi_ap_enabled", False) is True:
@@ -136,10 +138,11 @@ def wifi_disconnect():
 def settime():
     if get_config("ntp_enabled", True) is True:
         try:
+            #log_message("NTP TIME", 3)
             ntptime.host = config["ntp_server"]
             ntptime.settime()
         except OSError as err:
-            # log_exception(err)
+            log_exception(err, 2)
             pass
 
 
@@ -155,8 +158,11 @@ def czas(sec=False):
         return "%04d-%02d-%02d %02d:%02d" % (y, m, d, hh, mm)
 
 
-def log_exception(exception, save_to_file=True):
+def log_exception(exception, log_level=1, save_to_file=True):
     print(czas(True))
+    if log_level < int(get_config("log_level",1)):
+        return
+
     sys.print_exception(exception)
 
     global files_in_use
@@ -177,12 +183,10 @@ def log_exception(exception, save_to_file=True):
         files_in_use[hf] = 0
 
 
-def log_message(message, save_to_file=True):
-    if type(message) == Exception:
-        print(czas(True))
-        sys.print_exception(message)
-    else:
-        print(czas(True), message)
+def log_message(message, log_level=1, save_to_file=False):
+    if log_level < int(get_config("log_level", 1)):
+        return
+    print(czas(True), message)
     global files_in_use
     hf = 'log.txt'
     if save_to_file:
@@ -299,43 +303,3 @@ def get_data():
     return dane
 
 
-_hextobyte_cache = None
-
-
-def unquote(string):
-    """unquote('abc%20def') -> b'abc def'."""
-    global _hextobyte_cache
-
-    # Note: strings are encoded as UTF-8. This is only an issue if it contains
-    # unescaped non-ASCII characters, which URIs should not.
-    if not string:
-        return b''
-
-    if isinstance(string, str):
-        string = string.encode('utf-8')
-
-    bits = string.split(b'%')
-    if len(bits) == 1:
-        return string
-
-    res = [bits[0]]
-    append = res.append
-
-    # Build cache for hex to char mapping on-the-fly only for codes
-    # that are actually used
-    if _hextobyte_cache is None:
-        _hextobyte_cache = {}
-
-    for item in bits[1:]:
-        try:
-            code = item[:2]
-            char = _hextobyte_cache.get(code)
-            if char is None:
-                char = _hextobyte_cache[code] = bytes([int(code, 16)])
-            append(char)
-            append(item[2:])
-        except KeyError:
-            append(b'%')
-            append(item)
-
-    return b''.join(res)

@@ -153,7 +153,6 @@
 
                 document.getElementById("savebtn").disabled = false;
                 chart.updateSeries([{"name": "Termometr", "data": []}, {"name": "Piec", "data": []}])
-                chartfile = 'termo';
                 loadChart();
             } catch (e) {
                 loadData();
@@ -169,7 +168,7 @@
         function loadChart() {
             var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = updateChart;
-            xmlDoc.open("GET", "api/chart.json?file=" + chartfile + "&d=" + new Date().getTime(), true);
+            xmlDoc.open("GET", "api/chart.json?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 
@@ -178,17 +177,26 @@
                 var dane = JSON.parse(data.target.responseText);
                 chart.appendData(dane);
             } catch (e) {
+                console.log(e)
                 loadChart();
             }
         }
 
         function saveData() {
             var xmlDoc = new XMLHttpRequest();
-            xmlDoc.onload = loadData;
             var temp = document.getElementById('temperatura').value;
             var harm = document.getElementById('harmonogram').value;
+            xmlDoc.onload = dataSaved;
             xmlDoc.open("POST", "save?temp=" + temp + "&tempEnd=?times=" + harm + "&timesEnd=&d=" + new Date().getTime(), true);
             xmlDoc.send(null);
+        }
+
+        function dataSaved(data) {
+            try {
+                var dane = JSON.parse(data.target.responseText);
+                alert(dane['result'])
+            } catch (e) {
+            }
         }
     </script>
     <title>Kontrola pieca</title>
