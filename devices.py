@@ -32,6 +32,7 @@ class Devices:
         elif sys.platform == 'esp32':
             self.adc = ADC(Pin(int(utils.get_config("adc_pin", 2))))
             self.adc.atten(ADC.ATTN_11DB)
+            self.adc.width(ADC.WIDTH_10BIT)
 
         if int(utils.get_config('thermometer_pin', -1)) > -1:
             self.thermometer = sensors.Sensory()
@@ -40,7 +41,7 @@ class Devices:
         if self.display is not None:
             self.display._write(fld, val)
 
-    def move_servo(self, val):
+    async def move_servo(self, val):
         if self.servo is not None:
             self.servo.duty(val)
 
@@ -59,7 +60,7 @@ class Devices:
             t = self.thermometer.pomiar_temperatury(to_history)
         return t
 
-    def display_temperature(self):
+    async def display_temperature(self):
         t = self.thermometer_value()
         self.led_write_number(int(round(t * 10)), 5, [2])
 
