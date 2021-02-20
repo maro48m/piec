@@ -5,9 +5,9 @@ import ntptime
 import os
 import gc
 import sys
+import uasyncio
 
-files_in_use = {}
-
+file_locks = {}
 config = {}
 
 
@@ -47,7 +47,6 @@ def save_config():
     with open(fn, 'w') as outfile:
         json.dump(config, outfile)
         outfile.close()
-    wait_for_file()
 
 
 def set_config(name, value, save=True):
@@ -86,14 +85,13 @@ def wifi_connect():
     else:
         ap_if.active(False)
 
-
     if not sta_if.isconnected():
         sta_if.active(True)
         if sta_if.status() not in (network.STAT_CONNECTING, network.STAT_GOT_IP):
             try:
                 sta_if.config(dhcp_hostname=get_config("hostname"))
             except OSError as eeee:
-                #log_message('WIFI CONNECT ERROR',2)
+                # log_message('WIFI CONNECT ERROR',2)
                 log_exception(eeee, 2)
 
             sta_if.connect(get_config("wifi_ssid"), get_config("wifi_passwd"))
@@ -138,7 +136,7 @@ def wifi_disconnect():
 def settime():
     if get_config("ntp_enabled", True) is True:
         try:
-            #log_message("NTP TIME", 3)
+            # log_message("NTP TIME")
             ntptime.host = config["ntp_server"]
             ntptime.settime()
         except OSError as err:
@@ -160,7 +158,7 @@ def czas(sec=False):
 
 def log_exception(exception, log_level=1, save_to_file=True):
     print(czas(True))
-    if log_level < int(get_config("log_level",1)):
+    if log_level < int(get_config("log_level", 1)):
         return
 
     sys.print_exception(exception)
@@ -168,53 +166,24 @@ def log_exception(exception, log_level=1, save_to_file=True):
     global files_in_use
     hf = 'log.txt'
     if save_to_file:
-        if hf in files_in_use.keys():
-            while files_in_use[hf] == 1:
-                utime.sleep_ms(1)
-
-        files_in_use[hf] = 1
-        log_file = open('log.txt', 'a+')
+        await lock_file(hf)
+        log_file = open(hf, 'a+')
 
         print(czas(True), file=log_file)
         sys.print_exception(exception, log_file)
 
         log_file.close()
-        wait_for_file()
-        files_in_use[hf] = 0
+        unlock_file(hf)
 
 
-def log_message(message, log_level=1, save_to_file=False):
-    if log_level < int(get_config("log_level", 1)):
-        return
+def log_message(message):
     print(czas(True), message)
-    global files_in_use
-    hf = 'log.txt'
-    if save_to_file:
-        if hf in files_in_use.keys():
-            while files_in_use[hf] == 1:
-                utime.sleep_ms(1)
-
-        files_in_use[hf] = 1
-        log_file = open('log.txt', 'a+')
-        if type(message) == Exception:
-            print(czas(True), file=log_file)
-            sys.print_exception(message, log_file)
-        else:
-            print(czas(True), message, file=log_file)
-        log_file.close()
-        wait_for_file()
-        files_in_use[hf] = 0
 
 
-def save_to_hist(val, hist_file):
-    global files_in_use
+async def save_to_hist(val, hist_file):
     c = czas(True)
     hf = hist_file
-    if hf in files_in_use.keys():
-        while files_in_use[hf] == 1:
-            utime.sleep_ms(1)
-
-    files_in_use[hf] = 1
+    await lock_file(hist_file)
     try:
         with open(hf, 'a+') as ff:
             ff.write('%s - %s\n' % (c, str(val)))
@@ -222,30 +191,34 @@ def save_to_hist(val, hist_file):
     except Exception as jerr:
         pass
 
-    wait_for_file()
-    files_in_use[hf] = 0
+    unlock_file(hist_file)
 
 
 def file_locked(file_name):
-    global files_in_use
-    if file_name in files_in_use.keys():
-        return files_in_use[file_name] == 1
+    global file_locks
+    if file_name in file_locks.keys():
+        return file_locks[file_name].locked()
     else:
         return False
 
 
-def lock_file(file_name):
-    global files_in_use
-    files_in_use[file_name] = 1
+async def lock_file(file_name):
+    global file_locks
+    try:
+        if file_name not in file_locks.keys():
+            file_locks[file_name] = uasyncio.Lock()
+        await file_locks[file_name].acquire()
+    except Exception as err:
+        print(err)
 
 
 def unlock_file(file_name):
-    global files_in_use
-    files_in_use[file_name] = 0
-
-
-def wait_for_file():
-    utime.sleep_ms(250)
+    global file_locks
+    try:
+        if file_name in file_locks.keys():
+            file_locks[file_name].release()
+    except Exception as err:
+        print(err)
 
 
 def remove_hist(file):
@@ -259,12 +232,9 @@ def remove_hist(file):
 
     for hf in files:
         try:
-            if hf in files_in_use.keys():
-                while files_in_use[hf] == 1:
-                    utime.sleep_ms(1)
-            files_in_use[hf] = 1
+            await lock_file(hf)
             os.remove(hf)
-            files_in_use[hf] = 0
+            unlock_file(hf)
         except:
             pass
 
@@ -278,11 +248,8 @@ def get_epoch(dts):
 
 
 def get_data():
-    dane = {}
-    dane["czas"] = czas()
-    dane["termometr"] = 0
-    dane["temperatura"] = int(get_config('piec_temperatura', 40))
-    dane["ostatnia_zmiana"] = get_config('piec_ostatnia_aktualizacja', '')
+    dane = {"czas": czas(), "termometr": 0, "temperatura": int(get_config('piec_temperatura', 40)),
+            "ostatnia_zmiana": get_config('piec_ostatnia_aktualizacja', '')}
 
     fs_stat = os.statvfs(os.getcwd())
     fs_size = fs_stat[0] * fs_stat[2]
@@ -301,5 +268,3 @@ def get_data():
     dane["harmonogram"] = tm
 
     return dane
-
-

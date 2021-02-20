@@ -8,5 +8,5 @@
   "display_pin": 12,
   "display_pin__comment": "D14-CLK, D13-DIN, D12-CS",
   "adc_pin": 32,
-  "log_level": 4
+  "log_level": 5
 }

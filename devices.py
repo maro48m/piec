@@ -54,27 +54,35 @@ class Devices:
     def joy_val(self):
         return self.adc.read()
 
-    def thermometer_value(self, to_history=False):
+    async def thermometer_value(self, to_history=False):
         t = 0
         if self.thermometer is not None:
-            t = self.thermometer.pomiar_temperatury(to_history)
+            t = await self.thermometer.pomiar_temperatury(to_history)
         return t
 
     async def display_temperature(self):
-        t = self.thermometer_value()
+        t = await self.thermometer_value()
         self.led_write_number(int(round(t * 10)), 5, [2])
 
     def led_write_number(self, val, move=0, dots=None):
+        if val < 0:
+            val *= -1
+            self.display._write(8-move, 1)
+            move += 1
+
         if dots is None:
             dots = []
         digits = {1: 48, 2: 109, 3: 121, 4: 51, 5: 91, 6: 95, 7: 112, 8: 127, 9: 123, 0: 126}
         values = []
-        while val > 0:
-            d = int(val % 10)
-            val = int(val / 10)
-            v = digits[d]
-            values.append(v)
-        values.reverse()
+        if val == 0:
+            values = [0]
+        else:
+            while val > 0:
+                d = int(val % 10)
+                val = int(val / 10)
+                v = digits[d]
+                values.append(v)
+            values.reverse()
         pos = 8 - move
         i = len(values)
         for d in values:

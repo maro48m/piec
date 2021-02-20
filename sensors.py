@@ -6,7 +6,7 @@ import utils
 
 
 class Sensory:
-    def pomiar_temperatury(self, log_to_hist=False):
+    async def pomiar_temperatury(self, log_to_hist=False):
 
         termo_pin = int(utils.get_config('thermometer_pin'))
         termo_res = int(utils.get_config('thermometer_res'))
@@ -31,19 +31,25 @@ class Sensory:
                 config = b'\x00\x00\x5f'
             if termo_res == 12:
                 config = b'\x00\x00\x7f'
-
-            ds.write_scratch(rom, config)
+            try:
+                ds.write_scratch(rom, config)
+            except Exception as err:
+                utils.log_exception(err)
             cnt += 1
         if cnt > 0:
+            tc = 0
             for x in range(termo_cnt):
-                ds.convert_temp()
+                try:
+                    ds.convert_temp()
+                    utime.sleep_ms(int(750 / (2 ** (12 - termo_res))))
+                    for rom in roms:
+                        t = ds.read_temp(rom)
+                        temperature += t
+                        tc += 1
+                except Exception as err:
+                    utils.log_exception(err)
 
-                utime.sleep_ms(int(750 / (2 ** (12 - termo_res))))
-                for rom in roms:
-                    t = ds.read_temp(rom)
-                    temperature += t
-
-            temperature = temperature / (termo_cnt * cnt * 1.0)
+            temperature = temperature / (tc * 1.0)
             if log_to_hist:
-                utils.save_to_hist(temperature, 'termometr.hist')
+                await utils.save_to_hist(temperature, 'termometr.hist')
         return temperature

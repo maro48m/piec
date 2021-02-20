@@ -1,5 +1,3 @@
-# TODO: przewijanie ustawień na wyświetlaczu
-
 import utils
 import utime
 import devices
@@ -7,6 +5,7 @@ import gc
 import web_helper
 from web import handle_api, send_file
 import uasyncio
+
 
 class Piec:
     def __init__(self, devices):
@@ -21,13 +20,14 @@ class Piec:
         self.joy_val = 500
         self.edit_temp = 0
         self.state = 1  # 0-sleep, 1 - display, 2 - edit
+        self.disp_state = 0
         self.edit_state = 0
 
     async def set_temperature(self, new_temp, zapisz=True):
         czas = utils.czas()
         if zapisz is True and utils.get_config("piec_historia_temperatury", True) is True:
             if utime.localtime(utime.time() + 1 * 3600)[0] > 2000:
-                utils.set_config("piec_ostatnia_aktualizacja", czas)
+                utils.set_config("piec_ostatnia_aktualizacja", czas, False)
         curr_temp = int(utils.get_config("piec_temperatura"))
 
         if curr_temp < new_temp <= (
@@ -48,12 +48,12 @@ class Piec:
         utils.set_config("piec_temperatura", int(new_temp))
         if zapisz is True and utils.get_config("piec_historia_temperatury", True) is True:
             if utime.localtime(utime.time() + 1 * 3600)[0] > 2000:
-                utils.save_to_hist(new_temp, 'piec.hist')
+                await utils.save_to_hist(new_temp, 'piec.hist')
 
         await uasyncio.sleep_ms(150)
 
-        if self.state > 0:
-            self.devices.led_write_number(new_temp)
+        # if self.state > 0:
+        #     self.devices.led_write_number(new_temp)
 
     def save_times(self, times):
         tms = {}
@@ -84,7 +84,7 @@ class Piec:
             (y, m, d, hh, mm, ss, wd, yd) = utime.localtime(utime.time() + 1 * 3600)
 
             if y > 2000:
-                if not(self.lh == hh and self.lm == mm):
+                if not (self.lh == hh and self.lm == mm):
                     self.lh = hh
                     self.lm = mm
 
@@ -111,14 +111,13 @@ class Piec:
             await uasyncio.sleep(30)
 
     async def handle_web(self, reader, writer):
-        # utils.log_message('HANDLE WEB', 4)
+        utils.log_message('HANDLE WEB')
 
         gc.collect()
         request = await reader.read(-1)
         rq = web_helper.parse_request(request)
 
-        # utils.log_message('WEB REQUEST', 2)
-        # utils.log_message(rq, 2)
+        utils.log_message(rq)
         del request
         handled = False
         url = rq["url"]
@@ -153,7 +152,7 @@ class Piec:
 
     async def handle_joystick(self):
         while True:
-            #utils.log_message('HANDLE JOYSTICK', 4)
+            # utils.log_message('HANDLE JOYSTICK')
             if self.edit_temp == 0:
                 self.edit_temp = int(utils.get_config("piec_temperatura", 0))
             if self.state in (2, 3, 4, 5):
@@ -176,16 +175,22 @@ class Piec:
     async def handle_button(self):
         while True:
             val = self.devices.button_value()
-            #utils.log_message('HANDLE BUTTON %d %d' % (val, self.btn_val), 4)
+            # utils.log_message('HANDLE BUTTON %d %d' % (val, self.btn_val))
             if self.btn_val == 1 and val == 0:
                 self.state += 1
                 if self.state == 1:
                     curr_temp = int(utils.get_config("piec_temperatura", 0))
                     self.devices.led_write_number(curr_temp)
+                    self.devices.led_write_number(0, 2)
+                    self.devices.led_write_number(0, 3)
                 if self.state == 2:
                     self.edit_temp = int(utils.get_config("piec_temperatura", 0))
+                    self.devices.led_write_number(self.edit_temp)
+                    self.devices.led_write_number(0, 2)
+                    self.devices.led_write_number(0, 3)
                 if self.state == 3:
                     self.state = 1
+                    self.disp_state = 0
                     curr_temp = int(utils.get_config("piec_temperatura", 0))
                     if self.edit_temp != curr_temp:
                         await self.set_temperature(int(self.edit_temp))
@@ -197,17 +202,38 @@ class Piec:
 
     async def handle_wifi(self):
         while True:
-            #utils.log_message('HANDLE WIFI', 4)
+            # utils.log_message('HANDLE WIFI')
             if utils.wifi_connected() is False:
                 utils.wifi_connect()
             await uasyncio.sleep(30)
 
     async def handle_display(self):
         while True:
-            #utils.log_message('HANDLE DISPLAY', 4)
+            # utils.log_message('HANDLE DISPLAY')
             if self.state < 2:
                 await self.devices.display_temperature()
+                dd = [1] if self.disp_state % 2 else []
+                if self.disp_state <= 40:
+                    curr_temp = int(utils.get_config("piec_temperatura", 0))
+                    self.devices.led_write_number(curr_temp, 0, dd)
+                    self.devices.led_write_number(0, 2)
+                    self.devices.led_write_number(0, 3)
+                elif 40 < self.disp_state <= 80:
+                    val = utils.wifi_signal()
+                    self.devices.led_write_number(val, 0, dd)
+                elif 80 < self.disp_state <= 120:
+                    (y, m, d, hh, mm, ss, wd, yd) = utime.localtime(utime.time() + 1 * 3600)
+                    self.devices.led_write_number(hh, 0, dd)
+                    if mm < 10:
+                        self.devices.led_write_number(0, 2, [])
+                        self.devices.led_write_number(mm, 3, [])
+                    else:
+                        self.devices.led_write_number(mm, 2, [])
+
                 self.devices.move_servo(utils.map_temp_to_servo(int(utils.get_config("piec_temperatura", 40))))
+                self.disp_state += 1
+                if self.disp_state > 120:
+                    self.disp_state = 0
             else:
                 if self.edit_state % 2 == 0:
                     self.devices.write_display(5, 79)
@@ -238,12 +264,9 @@ devices = devices.Devices()
 while True:
     try:
         p = Piec(devices)
-
         p.run()
+
     except Exception as err:
-        print(err)
-        utils.log_message('GENERAL EXCEPTION', 1)
-        utils.log_message('FREE MEMORY: %s' % (str(gc.mem_free())), 1)
         utils.log_exception(err, 1)
 
         gc.collect()
