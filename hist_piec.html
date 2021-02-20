@@ -105,12 +105,17 @@
         function loadData() {
             xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
+            xmlDoc.onerror = clearval;
             xmlDoc.open("GET", "api/hist_piec?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 
         function process() {
             document.getElementById('hist').value = xmlDoc.responseText;
+        }
+
+        function clearval() {
+            document.getElementById('hist').value = '';
         }
 
         function clearLogs(){

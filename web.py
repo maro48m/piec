@@ -2,6 +2,7 @@ import utils
 import json
 import sensors
 import uasyncio
+import gc
 from web_helper import get_header
 
 
@@ -9,10 +10,8 @@ async def send_file(writer, file_name, header):
     writer.write(get_header(header).encode('utf8'))
     try:
         buf = None
-        while utils.file_locked(file_name):
-            await uasyncio.sleep_ms(1)
 
-        utils.lock_file(file_name)
+        await utils.lock_file2(file_name)
 
         with open(file_name, 'r') as fi:
             while True:
@@ -29,8 +28,7 @@ async def send_file(writer, file_name, header):
         # utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name, 2)
         utils.log_exception(eee, 2)
 
-    utils.wait_for_file()
-    utils.unlock_file(file_name)
+    utils.unlock_file2(file_name)
     if buf is not None:
         del buf
     return True
@@ -84,7 +82,7 @@ async def handle_api(writer, request):
         await send_file(writer, 'termometr.hist', 'text/plain')
     elif request["url"].find("/api/chart.json") > -1:
         writer.write(get_header('application/json'))
-        await send_chart_data(writer)
+        await send_chart_data2(writer)
     elif request["url"].find("/api/file") > -1:
         writer.write(get_header('application/json'))
         if upload_file(request):
@@ -114,10 +112,7 @@ async def send_chart_data(writer):
         await writer.drain()
 
         try:
-            while utils.file_locked(file_name):
-                uasyncio.sleep_ms(1)
-
-            utils.lock_file(file_name)
+            await utils.lock_file2(file_name)
 
             with open(file_name, 'r') as fi:
                 while True:
@@ -159,9 +154,79 @@ async def send_chart_data(writer):
             writer.write("""]}]""".encode('utf-8'))
 
         await writer.drain()
+        utils.unlock_file2(file_name)
 
-        utils.wait_for_file()
-        utils.unlock_file(file_name)
+
+async def send_chart_data2(writer):
+    for i in range(1, 3):
+        if i == 1:
+            file_name = 'termometr.hist'
+            data = """[{"name": "Termometr", "data": ["""
+            termometr = sensors.Sensory()
+            curr = termometr.pomiar_temperatury()
+            del termometr
+            sqr = False
+        else:
+            file_name = 'piec.hist'
+            data = """{"name": "Piec", "data": ["""
+            curr = int(utils.get_config("piec_temperatura", 40))
+            sqr = True
+        prev = None
+        writer.write(data.encode('utf-8'))
+        await writer.drain()
+
+        try:
+            await utils.lock_file2(file_name)
+
+            with open(file_name, 'r') as fi:
+                c = 0
+                data = ""
+                while True:
+                    buf = fi.readline()
+                    if str(buf) == '':
+                        break
+                    else:
+                        d = buf.rstrip().split(" - ")
+
+                        if sqr and prev is not None:
+                            dp = buf.rstrip().split(" - ")
+                            dp[1] = prev
+                            dp[0] += " GMT"
+                            data += (json.dumps(dp)+',')
+
+                        prev = d[1]
+                        d[0] += " GMT"
+                        data += (json.dumps(d)+',')
+                        c += 1
+                        if c == 10:
+                            writer.write(data.encode('utf-8'))
+                            await writer.drain()
+                            c = 0
+                            data = ""
+
+                fi.close()
+        except Exception as eee:
+            #utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name, 2)
+            utils.log_exception(eee, 2)
+            pass
+
+        if sqr:
+            d = [utils.czas(True)+' GMT', prev]
+            data += (json.dumps(d)+',')
+
+        d = [utils.czas(True)+' GMT', curr]
+        data += (json.dumps(d))
+
+        writer.write(data.encode('utf-8'))
+        await writer.drain()
+
+        if i == 1:
+            writer.write("""]},""".encode('utf-8'))
+        else:
+            writer.write("""]}]""".encode('utf-8'))
+
+        await writer.drain()
+        utils.unlock_file2(file_name)
 
 
 def upload_file(request):
