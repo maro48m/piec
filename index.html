@@ -130,8 +130,6 @@
         function loadData() {
             var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
-            chartfile = 'termo';
-            chunk = 1;
             xmlDoc.open("GET", "api/dane.json?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
@@ -175,6 +173,7 @@
         function updateChart(data) {
             try {
                 var dane = JSON.parse(data.target.responseText);
+                console.log(dane);
                 chart.appendData(dane);
             } catch (e) {
                 console.log(e)
@@ -362,7 +361,7 @@
         <div>
             <button><a href="/logs">Plik logów</a></button>
             <button><a href="/params">Parametry</a></button>
-<!--            <button><a href="/fileup">Aktualizacja plików</a></button>-->
+            <!--            <button><a href="/fileup">Aktualizacja plików</a></button>-->
         </div>
     </div>
     <div class="section">
@@ -387,7 +386,7 @@
         series: [],
         chart: {
             height: 500,
-            type: 'line',
+            type: "line",
             toolbar: {tools: {download: false}},
             locales: [{
                 "name": "pl",
@@ -416,6 +415,7 @@
         noData: {
             text: 'Wczytywanie...'
         },
+        colors:['#db6161','#77db61'],
         xaxis: {
             type: 'datetime',
             xaxis: {

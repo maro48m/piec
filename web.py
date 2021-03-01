@@ -1,20 +1,25 @@
 import utils
 import json
 import sensors
-from web_helper import get_header
+import sys
+from web_helper import get_header, send_chart_data2
 
 
 async def send_file(writer, file_name, header):
     writer.write(get_header(header).encode('utf8'))
+    bufsize = 128
+    if sys.platform == 'esp32':
+        bufsize = 4096
     try:
         buf = None
+        #print('SEND FILE', file_name)
 
         await utils.lock_file(file_name)
-
+        #print('SEND FILE - locked')
         with open(file_name, 'r') as fi:
             while True:
-                buf = fi.read(4096)
-                if str(buf) == '':
+                buf = fi.read(bufsize)
+                if buf == '':
                     break
                 else:
                     writer.write(buf.encode('utf8'))
@@ -27,6 +32,7 @@ async def send_file(writer, file_name, header):
         utils.log_exception(eee, 2)
 
     utils.unlock_file(file_name)
+    #print('SEND FILE - unlocked')
     if buf is not None:
         del buf
     return True
@@ -44,22 +50,22 @@ async def handle_api(writer, request):
         writer.write(json.dumps(dane).encode('utf-8'))
         await writer.drain()
     elif request["url"].find("/api/clear/logs") > -1:
-        utils.remove_hist(4)
+        await utils.remove_hist(4)
         writer.write(get_header('application/json'))
         writer.write('{"response":"OK"}'.encode('utf-8'))
         await writer.drain()
     elif request["url"].find("/api/clear/hist_piec") > -1:
-        utils.remove_hist(1)
+        await utils.remove_hist(1)
         writer.write(get_header('application/json'))
         writer.write('{"response":"OK"}'.encode('utf-8'))
         await writer.drain()
     elif request["url"].find("/api/clear/hist_termo") > -1:
-        utils.remove_hist(2)
+        await utils.remove_hist(2)
         writer.write(get_header('application/json'))
         writer.write('{"response":"OK"}'.encode('utf-8'))
         await writer.drain()
     elif request["url"].find("/api/clear/all") > -1:
-        utils.remove_hist(7)
+        await utils.remove_hist(7)
         writer.write(get_header('application/json'))
         writer.write('{"response":"OK"}'.encode('utf-8'))
         await writer.drain()
@@ -89,142 +95,6 @@ async def handle_api(writer, request):
             writer.write('{"response":"Błąd aktualizacji"}'.encode('utf-8'))
         await writer.drain()
     return True
-
-
-async def send_chart_data(writer):
-    for i in range(1, 3):
-        if i == 1:
-            file_name = 'termometr.hist'
-            data = """[{"name": "Termometr", "data": ["""
-            termometr = sensors.Sensory()
-            curr = await termometr.pomiar_temperatury()
-            del termometr
-            sqr = False
-        else:
-            file_name = 'piec.hist'
-            data = """{"name": "Piec", "data": ["""
-            curr = int(utils.get_config("piec_temperatura", 40))
-            sqr = True
-        prev = None
-        writer.write(data.encode('utf-8'))
-        await writer.drain()
-
-        try:
-            await utils.lock_file(file_name)
-
-            with open(file_name, 'r') as fi:
-                while True:
-                    buf = fi.readline()
-                    if str(buf) == '':
-                        break
-                    else:
-                        d = buf.rstrip().split(" - ")
-
-                        if sqr and prev is not None:
-                            dp = buf.rstrip().split(" - ")
-                            dp[1] = prev
-                            dp[0] += " GMT"
-                            writer.write((json.dumps(dp)+',').encode('utf-8'))
-                            await writer.drain()
-
-                        prev = d[1]
-                        d[0] += " GMT"
-                        writer.write((json.dumps(d)+',').encode('utf-8'))
-                        await writer.drain()
-                fi.close()
-        except Exception as eee:
-            #utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name, 2)
-            utils.log_exception(eee, 2)
-            pass
-
-        if sqr:
-            d = [utils.czas(True)+' GMT', prev]
-            writer.write((json.dumps(d)+',').encode('utf-8'))
-            await writer.drain()
-
-        d = [utils.czas(True)+' GMT', curr]
-        writer.write(json.dumps(d).encode('utf-8'))
-        await writer.drain()
-
-        if i == 1:
-            writer.write("""]},""".encode('utf-8'))
-        else:
-            writer.write("""]}]""".encode('utf-8'))
-
-        await writer.drain()
-        utils.unlock_file(file_name)
-
-
-async def send_chart_data2(writer):
-    for i in range(1, 3):
-        if i == 1:
-            file_name = 'termometr.hist'
-            data = """[{"name": "Termometr", "data": ["""
-            termometr = sensors.Sensory()
-            curr = await termometr.pomiar_temperatury()
-            del termometr
-            sqr = False
-        else:
-            file_name = 'piec.hist'
-            data = """{"name": "Piec", "data": ["""
-            curr = int(utils.get_config("piec_temperatura", 40))
-            sqr = True
-        prev = None
-        writer.write(data.encode('utf-8'))
-        await writer.drain()
-
-        try:
-            await utils.lock_file(file_name)
-
-            with open(file_name, 'r') as fi:
-                c = 0
-                data = ""
-                while True:
-                    buf = fi.readline()
-                    if str(buf) == '':
-                        break
-                    else:
-                        d = buf.rstrip().split(" - ")
-
-                        if sqr and prev is not None:
-                            dp = buf.rstrip().split(" - ")
-                            dp[1] = prev
-                            dp[0] += " GMT"
-                            data += (json.dumps(dp)+',')
-
-                        prev = d[1]
-                        d[0] += " GMT"
-                        data += (json.dumps(d)+',')
-                        c += 1
-                        if c == 240:
-                            writer.write(data.encode('utf-8'))
-                            await writer.drain()
-                            c = 0
-                            data = ""
-
-                fi.close()
-        except Exception as eee:
-            #utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name, 2)
-            utils.log_exception(eee, 2)
-            pass
-
-        if sqr:
-            d = [utils.czas(True)+' GMT', prev]
-            data += (json.dumps(d)+',')
-
-        d = [utils.czas(True)+' GMT', curr]
-        data += (json.dumps(d))
-
-        writer.write(data.encode('utf-8'))
-        await writer.drain()
-
-        if i == 1:
-            writer.write("""]},""".encode('utf-8'))
-        else:
-            writer.write("""]}]""".encode('utf-8'))
-
-        await writer.drain()
-        utils.unlock_file(file_name)
 
 
 def upload_file(request):

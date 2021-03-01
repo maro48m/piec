@@ -5,7 +5,7 @@ import ntptime
 import os
 import gc
 import sys
-import uasyncio
+import uasyncio as asyncio
 
 file_locks = {}
 config = {}
@@ -189,7 +189,7 @@ async def save_to_hist(val, hist_file):
             ff.write('%s - %s\n' % (c, str(val)))
             ff.close()
     except Exception as jerr:
-        pass
+        print(jerr)
 
     unlock_file(hist_file)
 
@@ -206,7 +206,7 @@ async def lock_file(file_name):
     global file_locks
     try:
         if file_name not in file_locks.keys():
-            file_locks[file_name] = uasyncio.Lock()
+            file_locks[file_name] = asyncio.Lock()
         await file_locks[file_name].acquire()
     except Exception as err:
         print(err)
@@ -221,7 +221,7 @@ def unlock_file(file_name):
         print(err)
 
 
-def remove_hist(file):
+async def remove_hist(file):
     files = []
     if file & 1:
         files.append('piec.hist')
@@ -235,8 +235,8 @@ def remove_hist(file):
             await lock_file(hf)
             os.remove(hf)
             unlock_file(hf)
-        except:
-            pass
+        except Exception as err:
+            print(err)
 
 
 def get_epoch(dts):

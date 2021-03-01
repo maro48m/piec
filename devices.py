@@ -65,7 +65,7 @@ class Devices:
         self.led_write_number(int(round(t * 10)), 5, [2])
 
     def led_write_number(self, val, move=0, dots=None):
-        if val < 0:
+        if val is not None and val < 0:
             val *= -1
             self.display._write(8-move, 1)
             move += 1
@@ -74,8 +74,10 @@ class Devices:
             dots = []
         digits = {1: 48, 2: 109, 3: 121, 4: 51, 5: 91, 6: 95, 7: 112, 8: 127, 9: 123, 0: 126}
         values = []
-        if val == 0:
+        if val is None:
             values = [0]
+        elif val == 0:
+            values = [126]
         else:
             while val > 0:
                 d = int(val % 10)

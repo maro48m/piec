@@ -1,3 +1,8 @@
+import utils
+import json
+import sensors
+import sys
+
 def get_header(mime_type):
     return "HTTP/1.1 200OK\n" + "Content-Type: %s\n" % mime_type + "Connection: close\n\n"
 
@@ -90,3 +95,80 @@ def unquote(string):
             append(item)
 
     return b''.join(res)
+
+async def send_chart_data2(writer):
+    cmax = 40
+    if sys.platform == 'esp32':
+        cmax = 240
+
+    for i in range(1, 3):
+        if i == 1:
+            file_name = 'termometr.hist'
+            data = """[{"name": "Termometr", "data": ["""
+            termometr = sensors.Sensory()
+            curr = await termometr.pomiar_temperatury()
+            del termometr
+            sqr = False
+        else:
+            file_name = 'piec.hist'
+            data = """{"name": "Piec", "data": ["""
+            curr = int(utils.get_config("piec_temperatura", 40))
+            sqr = True
+        prev = None
+        writer.write(data.encode('utf-8'))
+        await writer.drain()
+
+        data = ""
+        try:
+            await utils.lock_file(file_name)
+
+            with open(file_name, 'r') as fi:
+                c = 0
+                data = ""
+                while True:
+                    buf = fi.readline()
+                    if str(buf) == '':
+                        break
+                    else:
+                        d = buf.rstrip().split(" - ")
+
+                        if sqr and prev is not None:
+                            dp = buf.rstrip().split(" - ")
+                            dp[1] = prev
+                            dp[0] += " GMT"
+                            data += (json.dumps(dp)+',')
+
+                        prev = d[1]
+                        d[0] += " GMT"
+                        data += (json.dumps(d)+',')
+                        c += 1
+
+                        if c == cmax:
+                            writer.write(data.encode('utf-8'))
+                            await writer.drain()
+                            c = 0
+                            data = ""
+
+                fi.close()
+        except Exception as eee:
+            #utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name, 2)
+            utils.log_exception(eee, 2)
+            pass
+
+        if sqr:
+            d = [utils.czas(True)+' GMT', prev]
+            data += (json.dumps(d)+',')
+
+        d = [utils.czas(True)+' GMT', curr]
+        data += (json.dumps(d))
+
+        writer.write(data.encode('utf-8'))
+        await writer.drain()
+
+        if i == 1:
+            writer.write("""]},""".encode('utf-8'))
+        else:
+            writer.write("""]}]""".encode('utf-8'))
+
+        await writer.drain()
+        utils.unlock_file(file_name)

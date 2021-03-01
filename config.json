@@ -9,18 +9,19 @@
   "wifi_ssid": "zrodlo",
   "wifi_passwd": "LothLorien.#13",
   "wifi_timeout": 15000,
-  "hostname": "piec2",
+  "hostname": "piec3",
   "ntp_server": "0.pl.pool.ntp.org",
   "ntp_enabled": true,
   "log_level": 3,
 
-  "piec_temperatura": 45,
+  "piec_temperatura": 40,
   "piec_temperatura_min": 30,
   "piec_temperatura_max": 90,
   "piec_temperatura_wg": 5,
   "piec_temperatura_wd": 2,
   "piec_czasy": {
     "06:30": 45,
+    "10:00": 40,
     "22:00": 40
   },
   "piec_ostatnia_aktualizacja": "2020-12-20 12:45",
