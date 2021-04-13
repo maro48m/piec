@@ -5,7 +5,7 @@ import ntptime
 import os
 import gc
 import sys
-import uasyncio as asyncio
+import uasyncio
 
 file_locks = {}
 config = {}
@@ -68,6 +68,21 @@ def update_config(cfg):
     save_config()
 
 
+def select_best_ap():
+    sta_if = network.WLAN(network.STA_IF)
+    min_rssi = -100
+    bssid = b''
+    if not sta_if.active():
+        sta_if.wifi_ps(network.WIFI_PS_NONE)
+        sta_if.active(True)
+    for ap in sta_if.scan():
+        if ap[0].decode('utf-8') == get_config("wifi_ssid"):
+            if min_rssi < ap[3]:
+                bssid = ap[1]
+                min_rssi = ap[3]
+    return bssid
+
+
 def wifi_connect():
     sta_if = network.WLAN(network.STA_IF)
     ap_if = network.WLAN(network.AP_IF)
@@ -85,16 +100,19 @@ def wifi_connect():
     else:
         ap_if.active(False)
 
-    if not sta_if.isconnected():
+    if not sta_if.active():
+        sta_if.wifi_ps(network.WIFI_PS_NONE)
         sta_if.active(True)
+
+    if not sta_if.isconnected():
         if sta_if.status() not in (network.STAT_CONNECTING, network.STAT_GOT_IP):
             try:
                 sta_if.config(dhcp_hostname=get_config("hostname"))
             except OSError as eeee:
                 # log_message('WIFI CONNECT ERROR',2)
                 log_exception(eeee, 2)
-
-            sta_if.connect(get_config("wifi_ssid"), get_config("wifi_passwd"))
+            bssid = select_best_ap()
+            sta_if.connect(get_config("wifi_ssid"), get_config("wifi_passwd"), bssid=bssid)
         t1 = utime.ticks_ms()
         while sta_if.status() != network.STAT_GOT_IP and utime.ticks_ms() - t1 < get_config("wifi_timeout"):
             utime.sleep_ms(100)
@@ -163,10 +181,9 @@ def log_exception(exception, log_level=1, save_to_file=True):
 
     sys.print_exception(exception)
 
-    global files_in_use
     hf = 'log.txt'
     if save_to_file:
-        await lock_file(hf)
+        yield lock_file(hf)
         log_file = open(hf, 'a+')
 
         print(czas(True), file=log_file)
@@ -206,7 +223,7 @@ async def lock_file(file_name):
     global file_locks
     try:
         if file_name not in file_locks.keys():
-            file_locks[file_name] = asyncio.Lock()
+            file_locks[file_name] = uasyncio.Lock()
         await file_locks[file_name].acquire()
     except Exception as err:
         print(err)

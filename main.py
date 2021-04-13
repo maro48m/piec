@@ -4,7 +4,7 @@ import devices
 import gc
 import web_helper
 from web import handle_api, send_file
-import uasyncio as asyncio
+import uasyncio
 import sys
 
 
@@ -24,6 +24,13 @@ class Piec:
         self.disp_state = 0
         self.edit_state = 0
 
+        self.btn_task = None
+        self.joy_task = None
+        self.display_task = None
+        self.web_task = None
+        self.timer_task = None
+        self.wifi_task = None
+
     async def set_temperature(self, new_temp, zapisz=True):
         czas = utils.czas()
         if zapisz is True and utils.get_config("piec_historia_temperatury", True) is True:
@@ -36,14 +43,14 @@ class Piec:
             set_temp = new_temp + int(utils.get_config("piec_temperatura_wg", 5))
             await self.devices.move_servo(utils.map_temp_to_servo(set_temp))
 
-            await asyncio.sleep_ms(1000)
+            await uasyncio.sleep_ms(1000)
 
         elif curr_temp > new_temp >= (
                 int(utils.get_config("piec_temperatura_min", 30)) + int(utils.get_config("piec_temperatura_wd", 2))):
             set_temp = new_temp - int(utils.get_config("piec_temperatura_wd", 2))
             await self.devices.move_servo(utils.map_temp_to_servo(set_temp))
 
-            await asyncio.sleep_ms(1000)
+            await uasyncio.sleep_ms(1000)
 
         await self.devices.move_servo(utils.map_temp_to_servo(new_temp))
         utils.set_config("piec_temperatura", int(new_temp))
@@ -51,7 +58,7 @@ class Piec:
             if utime.localtime(utime.time() + 1 * 3600)[0] > 2000:
                 await utils.save_to_hist(new_temp, 'piec.hist')
 
-        await asyncio.sleep_ms(150)
+        await uasyncio.sleep_ms(150)
 
         # if self.state > 0:
         #     self.devices.led_write_number(new_temp)
@@ -109,21 +116,21 @@ class Piec:
                     if mm % 20 == 0 and self.lum != mm and utils.wifi_connected():
                         utils.settime()
                         self.lum = mm
-            await asyncio.sleep(30)
+            await uasyncio.sleep(30)
 
     async def handle_web(self, reader, writer):
-        utils.log_message('HANDLE WEB')
+        # utils.log_message('HANDLE WEB')
 
         gc.collect()
         request = b''
         bufsize = 10
         if sys.platform == 'esp32':
-            bufsize = 1024
+            bufsize = -1
         while True:
             buf = b''
             try:
-                buf = await asyncio.wait_for(reader.read(bufsize), 0.5)
-            except asyncio.TimeoutError:
+                buf = await uasyncio.wait_for(reader.read(bufsize), 0.5)
+            except uasyncio.TimeoutError:
                 break
 
             if buf == b'':
@@ -136,7 +143,7 @@ class Piec:
         #print(request)
         rq = web_helper.parse_request(request)
 
-        #utils.log_message(rq)
+        # utils.log_message(rq)
         del request
         handled = False
         url = rq["url"]
@@ -146,8 +153,8 @@ class Piec:
             temp = int(url[url.find("temp=") + len("temp="):url.find("&tempEnd")])
             times = url[url.find("times=") + len("times="):url.find("&timesEnd")]
             await self.web_save(temp, times)
-            writer.write(web_helper.get_header('application/json').encode('utf8'))
-            writer.write('{"result":"Dane zapisane"}'.encode('utf8'))
+            writer.write(web_helper.get_header('application/json'))
+            writer.write('{"result":"Dane zapisane"}'.encode('utf-8'))
             await writer.drain()
             handled = True
         elif url.find("/hist/termo") > -1:
@@ -166,8 +173,10 @@ class Piec:
             await send_file(writer, 'index.html', 'text/html')
         del rq
         #utils.log_message('WEB REQUEST DONE')
+
         writer.close()
         await writer.wait_closed()
+
 
     async def handle_joystick(self):
         while True:
@@ -180,16 +189,16 @@ class Piec:
                     if self.edit_temp < int(utils.get_config("piec_temperatura_max", 90)):
                         self.edit_temp += 1
                         self.devices.led_write_number(self.edit_temp)
-                    await asyncio.sleep_ms(150)
+                    await uasyncio.sleep_ms(150)
                 if val >= 900:
                     if self.edit_temp > int(utils.get_config("piec_temperatura_min", 30)):
                         self.edit_temp -= 1
                         self.devices.led_write_number(self.edit_temp)
-                    await asyncio.sleep_ms(150)
+                    await uasyncio.sleep_ms(150)
                 self.joy_val = val
-                await asyncio.sleep_ms(10)
+                await uasyncio.sleep_ms(10)
             else:
-                await asyncio.sleep_ms(500)
+                await uasyncio.sleep_ms(500)
 
     async def handle_button(self):
         while True:
@@ -217,14 +226,14 @@ class Piec:
                     self.edit_temp = 0
                     self.devices.write_display(5, 0)
             self.btn_val = val
-            await asyncio.sleep_ms(150)
+            await uasyncio.sleep_ms(150)
 
     async def handle_wifi(self):
         while True:
             # utils.log_message('HANDLE WIFI')
             if utils.wifi_connected() is False:
                 utils.wifi_connect()
-            await asyncio.sleep(30)
+            await uasyncio.sleep(30)
 
     async def handle_display(self):
         while True:
@@ -244,7 +253,7 @@ class Piec:
                     (y, m, d, hh, mm, ss, wd, yd) = utime.localtime(utime.time() + 1 * 3600)
                     if hh < 10:
                         self.devices.led_write_number(0, 0, [])
-                        if dd.count() == 1:
+                        if len(dd) == 1:
                             dd = [0]
                         self.devices.led_write_number(hh, 1, dd)
                     else:
@@ -255,7 +264,7 @@ class Piec:
                     else:
                         self.devices.led_write_number(mm, 2, [])
 
-                self.devices.move_servo(utils.map_temp_to_servo(int(utils.get_config("piec_temperatura", 40))))
+                await self.devices.move_servo(utils.map_temp_to_servo(int(utils.get_config("piec_temperatura", 40))))
                 self.disp_state += 1
                 if self.disp_state > 120:
                     self.disp_state = 0
@@ -267,17 +276,17 @@ class Piec:
                 self.edit_state += 1
                 if self.edit_state > 100:
                     self.edit_state = 0
-            await asyncio.sleep_ms(250)
+            await uasyncio.sleep_ms(250)
 
     def run(self):
-        loop = asyncio.get_event_loop()
+        loop = uasyncio.get_event_loop()
         loop.create_task(self.set_temperature(int(utils.get_config("piec_temperatura", 40)), False))
-        loop.create_task(self.handle_wifi())
-        loop.create_task(self.handle_timer())
-        loop.create_task(self.handle_button())
-        loop.create_task(self.handle_joystick())
-        loop.create_task(self.handle_display())
-        loop.create_task(asyncio.start_server(self.handle_web, '0.0.0.0', 80))
+        self.wifi_task = loop.create_task(self.handle_wifi())
+        self.timer_task = loop.create_task(self.handle_timer())
+        self.btn_task = loop.create_task(self.handle_button())
+        self.joy_task = loop.create_task(self.handle_joystick())
+        self.display_task = loop.create_task(self.handle_display())
+        self.web_task = loop.create_task(uasyncio.start_server(self.handle_web, '0.0.0.0', 80))
         loop.run_forever()
 
 
@@ -286,12 +295,5 @@ utils.wifi_disconnect()
 
 devices = devices.Devices()
 
-while True:
-    try:
-        p = Piec(devices)
-        p.run()
-
-    except Exception as err:
-        utils.log_exception(err, 1)
-
-        gc.collect()
+p = Piec(devices)
+p.run()

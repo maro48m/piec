@@ -101,29 +101,41 @@
     </style>
 
     <script>
-        var xmlDoc = null;
 
         function loadData() {
-            xmlDoc = new XMLHttpRequest();
+            var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
             xmlDoc.open("GET", "api/logs?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 
-        function process() {
-            document.getElementById('hist').value = xmlDoc.responseText;
+        function process(data) {
+            if (data.target.responseText.indexOf('<') > 0){
+                loadData()
+            }
+            else
+                document.getElementById('hist').value = data.target.responseText;
         }
 
         function clearLogs(){
-            xmlDoc = new XMLHttpRequest();
-            xmlDoc.onload = loadData;
+            var xmlDoc = new XMLHttpRequest();
+            xmlDoc.onload = dataSaved;
             xmlDoc.open("GET", "/api/clear/logs?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 
         window.onload = function () {
-            loadData();
+            setTimeout(loadData, 1000);
         };
+
+        function dataSaved(data) {
+            try {
+                var dane = JSON.parse(data.target.responseText);
+                alert(dane['result'])
+                clearval();
+            } catch (e) {
+            }
+        }
     </script>
     <title>Kontrola pieca</title>
 </head>

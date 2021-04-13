@@ -127,56 +127,61 @@
     </style>
 
     <script>
-        var xmlDoc = null;
-
         function loadData() {
-            xmlDoc = new XMLHttpRequest();
+            var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
             xmlDoc.open("GET", "api/config.json?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 
-        function process() {
-            var dane = JSON.parse(xmlDoc.responseText);
-            document.getElementById('wifi_ssid').value = dane['wifi_ssid'];
-            document.getElementById('wifi_passwd').value = dane['wifi_passwd'];
-            document.getElementById('wifi_ap_enabled').checked = dane['wifi_ap_enabled'];
-            document.getElementById('wifi_ap_ssid').value = dane['wifi_ap_ssid'];
-            document.getElementById('wifi_ap_hidden').checked = dane['wifi_ap_hidden'];
-            document.getElementById('wifi_ap_ip').value = dane['wifi_ap_ip'];
-            document.getElementById('wifi_ap_netmask').value = dane['wifi_ap_netmask'];
-            document.getElementById('wifi_ap_auth').value = dane['wifi_ap_auth'];
-            document.getElementById('wifi_ap_passwd').value = dane['wifi_ap_passwd'];
+        function process(data) {
+            if (data.target.responseText.indexOf('<') > 0){
+                loadData()
+            }
+            else {
 
-            document.getElementById('piec_historia_termometru').checked = dane['piec_historia_termometru'];
-            document.getElementById('piec_historia_termometru_czas').value = dane['piec_historia_termometru_czas'];
-            document.getElementById('thermometer_res').value = dane['thermometer_res'];
-            document.getElementById('thermometer_repeat').value = dane['thermometer_repeat'];
-            document.getElementById('servo_min').value = dane['servo_min'];
-            document.getElementById('servo_max').value = dane['servo_max'];
-            document.getElementById('piec_temperatura_min').value = dane['piec_temperatura_min'];
-            document.getElementById('piec_temperatura_max').value = dane['piec_temperatura_max'];
-            document.getElementById('piec_temperatura_wg').value = dane['piec_temperatura_wg'];
-            document.getElementById('piec_temperatura_wd').value = dane['piec_temperatura_wd'];
-            document.getElementById('piec_historia_temperatury').checked = dane['piec_historia_temperatury'];
-            document.getElementById('button_pin').value = dane['button_pin'];
-            document.getElementById('thermometer_pin').value = dane['thermometer_pin'];
-            document.getElementById('servo_pin').value = dane['servo_pin'];
-            document.getElementById('display_pin').value = dane['display_pin'];
-            document.getElementById('ntp_enabled').checked = dane['ntp_enabled'];
-            document.getElementById('ntp_server').value = dane['ntp_server'];
-            document.getElementById('hostname').value = dane['hostname'];
 
-            document.getElementById("savebtn").disabled = false;
+                var dane = JSON.parse(data.target.responseText);
+                document.getElementById('wifi_ssid').value = dane['wifi_ssid'];
+                document.getElementById('wifi_passwd').value = dane['wifi_passwd'];
+                document.getElementById('wifi_ap_enabled').checked = dane['wifi_ap_enabled'];
+                document.getElementById('wifi_ap_ssid').value = dane['wifi_ap_ssid'];
+                document.getElementById('wifi_ap_hidden').checked = dane['wifi_ap_hidden'];
+                document.getElementById('wifi_ap_ip').value = dane['wifi_ap_ip'];
+                document.getElementById('wifi_ap_netmask').value = dane['wifi_ap_netmask'];
+                document.getElementById('wifi_ap_auth').value = dane['wifi_ap_auth'];
+                document.getElementById('wifi_ap_passwd').value = dane['wifi_ap_passwd'];
+
+                document.getElementById('piec_historia_termometru').checked = dane['piec_historia_termometru'];
+                document.getElementById('piec_historia_termometru_czas').value = dane['piec_historia_termometru_czas'];
+                document.getElementById('thermometer_res').value = dane['thermometer_res'];
+                document.getElementById('thermometer_repeat').value = dane['thermometer_repeat'];
+                document.getElementById('servo_min').value = dane['servo_min'];
+                document.getElementById('servo_max').value = dane['servo_max'];
+                document.getElementById('piec_temperatura_min').value = dane['piec_temperatura_min'];
+                document.getElementById('piec_temperatura_max').value = dane['piec_temperatura_max'];
+                document.getElementById('piec_temperatura_wg').value = dane['piec_temperatura_wg'];
+                document.getElementById('piec_temperatura_wd').value = dane['piec_temperatura_wd'];
+                document.getElementById('piec_historia_temperatury').checked = dane['piec_historia_temperatury'];
+                document.getElementById('button_pin').value = dane['button_pin'];
+                document.getElementById('thermometer_pin').value = dane['thermometer_pin'];
+                document.getElementById('servo_pin').value = dane['servo_pin'];
+                document.getElementById('display_pin').value = dane['display_pin'];
+                document.getElementById('ntp_enabled').checked = dane['ntp_enabled'];
+                document.getElementById('ntp_server').value = dane['ntp_server'];
+                document.getElementById('hostname').value = dane['hostname'];
+
+                document.getElementById("savebtn").disabled = false;
+            }
         }
 
         window.onload = function () {
-            loadData();
+            setTimeout(loadData, 1000);
         };
 
         function saveData() {
-            xmlDoc = new XMLHttpRequest();
-            xmlDoc.onload = loadData;
+            var xmlDoc = new XMLHttpRequest();
+            xmlDoc.onload = dataSaved;
             var ob = {
                 'wifi_ssid': document.getElementById('wifi_ssid').value,
                 'wifi_passwd': document.getElementById('wifi_passwd').value,
@@ -211,6 +216,15 @@
             xmlDoc.setRequestHeader('Content-type', 'application/json');
             xmlDoc.send(JSON.stringify(ob));
         }
+
+        function dataSaved(data) {
+            try {
+                var dane = JSON.parse(data.target.responseText);
+                alert(dane['result'])
+            } catch (e) {
+            }
+        }
+
     </script>
     <title>Kontrola pieca</title>
 </head>

@@ -6,7 +6,7 @@ from web_helper import get_header, send_chart_data2
 
 
 async def send_file(writer, file_name, header):
-    writer.write(get_header(header).encode('utf8'))
+    writer.write(get_header(header))
     bufsize = 128
     if sys.platform == 'esp32':
         bufsize = 4096
@@ -39,6 +39,7 @@ async def send_file(writer, file_name, header):
 
 
 async def handle_api(writer, request):
+
     if request["url"].find("/api/dane.json") > -1:
 
         termometr = sensors.Sensory()
@@ -52,22 +53,22 @@ async def handle_api(writer, request):
     elif request["url"].find("/api/clear/logs") > -1:
         await utils.remove_hist(4)
         writer.write(get_header('application/json'))
-        writer.write('{"response":"OK"}'.encode('utf-8'))
+        writer.write('{"result":"Historia wyczyszczona"}'.encode('utf-8'))
         await writer.drain()
     elif request["url"].find("/api/clear/hist_piec") > -1:
         await utils.remove_hist(1)
         writer.write(get_header('application/json'))
-        writer.write('{"response":"OK"}'.encode('utf-8'))
+        writer.write('{"result":"Historia wyczyszczona"}'.encode('utf-8'))
         await writer.drain()
     elif request["url"].find("/api/clear/hist_termo") > -1:
         await utils.remove_hist(2)
         writer.write(get_header('application/json'))
-        writer.write('{"response":"OK"}'.encode('utf-8'))
+        writer.write('{"result":"Historia wyczyszczona"}'.encode('utf-8'))
         await writer.drain()
     elif request["url"].find("/api/clear/all") > -1:
         await utils.remove_hist(7)
         writer.write(get_header('application/json'))
-        writer.write('{"response":"OK"}'.encode('utf-8'))
+        writer.write('{"result":"Historia wyczyszczona"}'.encode('utf-8'))
         await writer.drain()
     elif request["url"].find("/api/config.json") > -1:
         writer.write(get_header('application/json'))
@@ -76,7 +77,7 @@ async def handle_api(writer, request):
     elif request["url"].find("/api/params_save") > -1:
         utils.update_config(request["body"].decode('utf-8'))
         writer.write(get_header('application/json'))
-        writer.write('{"response":"OK"}'.encode('utf-8'))
+        writer.write('{"result":"Parametry zapisane"}'.encode('utf-8'))
         await writer.drain()
     elif request["url"].find("/api/logs") > -1:
         await send_file(writer, 'log.txt', 'text/plain')

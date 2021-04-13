@@ -3,8 +3,9 @@ import json
 import sensors
 import sys
 
+
 def get_header(mime_type):
-    return "HTTP/1.1 200OK\n" + "Content-Type: %s\n" % mime_type + "Connection: close\n\n"
+    return ("HTTP/1.1 200OK\n" + "Content-Type: %s\n" % mime_type + "Connection: close\n\n").encode('utf-8')
 
 
 def url_params(url):
@@ -47,13 +48,14 @@ def parse_request(request):
                 if len(hdr) == 2:
                     headers[hdr[0].decode('ascii')] = hdr[1].decode('ascii')
         else:
-            body += line+b'\r\n'
+            body += line + b'\r\n'
 
     ret["headers"] = headers
     ret["body"] = body
     del lines
     del hdr
     return ret
+
 
 _hextobyte_cache = None
 
@@ -96,6 +98,7 @@ def unquote(string):
 
     return b''.join(res)
 
+
 async def send_chart_data2(writer):
     cmax = 40
     if sys.platform == 'esp32':
@@ -136,11 +139,11 @@ async def send_chart_data2(writer):
                             dp = buf.rstrip().split(" - ")
                             dp[1] = prev
                             dp[0] += " GMT"
-                            data += (json.dumps(dp)+',')
+                            data += (json.dumps(dp) + ',')
 
                         prev = d[1]
                         d[0] += " GMT"
-                        data += (json.dumps(d)+',')
+                        data += (json.dumps(d) + ',')
                         c += 1
 
                         if c == cmax:
@@ -151,15 +154,15 @@ async def send_chart_data2(writer):
 
                 fi.close()
         except Exception as eee:
-            #utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name, 2)
+            # utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name, 2)
             utils.log_exception(eee, 2)
             pass
 
         if sqr:
-            d = [utils.czas(True)+' GMT', prev]
-            data += (json.dumps(d)+',')
+            d = [utils.czas(True) + ' GMT', prev]
+            data += (json.dumps(d) + ',')
 
-        d = [utils.czas(True)+' GMT', curr]
+        d = [utils.czas(True) + ' GMT', curr]
         data += (json.dumps(d))
 
         writer.write(data.encode('utf-8'))
