@@ -1,3 +1,5 @@
+import gc
+
 import utils
 import json
 import sensors
@@ -102,7 +104,7 @@ def unquote(string):
 async def send_chart_data2(writer):
     cmax = 40
     if sys.platform == 'esp32':
-        cmax = 240
+        cmax = 120
 
     for i in range(1, 3):
         if i == 1:
@@ -117,6 +119,7 @@ async def send_chart_data2(writer):
             data = """{"name": "Piec", "data": ["""
             curr = int(utils.get_config("piec_temperatura", 40))
             sqr = True
+
         prev = None
         writer.write(data.encode('utf-8'))
         await writer.drain()
@@ -128,6 +131,7 @@ async def send_chart_data2(writer):
             with open(file_name, 'r') as fi:
                 c = 0
                 data = ""
+
                 while True:
                     buf = fi.readline()
                     if str(buf) == '':
@@ -150,6 +154,7 @@ async def send_chart_data2(writer):
                             writer.write(data.encode('utf-8'))
                             await writer.drain()
                             c = 0
+                            del data
                             data = ""
 
                 fi.close()
@@ -166,6 +171,7 @@ async def send_chart_data2(writer):
         data += (json.dumps(d))
 
         writer.write(data.encode('utf-8'))
+        del data
         await writer.drain()
 
         if i == 1:

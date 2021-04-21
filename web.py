@@ -39,7 +39,6 @@ async def send_file(writer, file_name, header):
 
 
 async def handle_api(writer, request):
-
     if request["url"].find("/api/dane.json") > -1:
 
         termometr = sensors.Sensory()
@@ -70,7 +69,7 @@ async def handle_api(writer, request):
         writer.write(get_header('application/json'))
         writer.write('{"result":"Historia wyczyszczona"}'.encode('utf-8'))
         await writer.drain()
-    elif request["url"].find("/api/config.json") > -1:
+    elif request["url"].find("/api/params_get.json") > -1:
         writer.write(get_header('application/json'))
         writer.write(json.dumps(utils.config).encode('utf-8'))
         await writer.drain()

@@ -105,12 +105,12 @@
         function loadData() {
             var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
-            xmlDoc.open("GET", "api/logs?d=" + new Date().getTime(), true);
+            xmlDoc.open("GET", "/api/logs?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 
         function process(data) {
-            if (data.target.responseText.indexOf('<') > 0){
+            if (data.target.responseText.indexOf('<') >= 0){
                 loadData()
             }
             else

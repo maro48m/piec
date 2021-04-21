@@ -130,7 +130,7 @@
         function loadData() {
             var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
-            xmlDoc.open("GET", "api/dane.json?d=" + new Date().getTime(), true);
+            xmlDoc.open("GET", "/api/dane.json?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 
@@ -154,7 +154,6 @@
                 loadChart();
             } catch (e) {
                 loadData();
-                return;
             }
 
         }
@@ -166,7 +165,7 @@
         function loadChart() {
             var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = updateChart;
-            xmlDoc.open("GET", "api/chart.json?d=" + new Date().getTime(), true);
+            xmlDoc.open("GET", "/api/chart.json?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 

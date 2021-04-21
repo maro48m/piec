@@ -9,8 +9,8 @@ import sys
 
 
 class Piec:
-    def __init__(self, devices):
-        self.devices = devices
+    def __init__(self):
+        self.devices = devices.Devices()
 
         self.lh = -1
         self.lm = -1
@@ -30,11 +30,24 @@ class Piec:
         self.web_task = None
         self.timer_task = None
         self.wifi_task = None
+        self.control_task = None
+
+        self.btn_cnt = 0
+        self.joy_cnt = 0
+        self.disp_cnt = 0
+        self.timer_cnt = 0
+        self.wifi_cnt = 0
+
+        self.last_btn_cnt = 0
+        self.last_joy_cnt = 0
+        self.last_disp_cnt = 0
+        self.last_timer_cnt = 0
+        self.last_wifi_cnt = 0
 
     async def set_temperature(self, new_temp, zapisz=True):
         czas = utils.czas()
         if zapisz is True and utils.get_config("piec_historia_temperatury", True) is True:
-            if utime.localtime(utime.time() + 1 * 3600)[0] > 2000:
+            if utils.dst_time()[0] > 2000:
                 utils.set_config("piec_ostatnia_aktualizacja", czas, False)
         curr_temp = int(utils.get_config("piec_temperatura"))
 
@@ -55,7 +68,7 @@ class Piec:
         await self.devices.move_servo(utils.map_temp_to_servo(new_temp))
         utils.set_config("piec_temperatura", int(new_temp))
         if zapisz is True and utils.get_config("piec_historia_temperatury", True) is True:
-            if utime.localtime(utime.time() + 1 * 3600)[0] > 2000:
+            if utils.dst_time()[0] > 2000:
                 await utils.save_to_hist(new_temp, 'piec.hist')
 
         await uasyncio.sleep_ms(150)
@@ -89,7 +102,7 @@ class Piec:
                 utils.settime()
                 self.time_update = 1
 
-            (y, m, d, hh, mm, ss, wd, yd) = utime.localtime(utime.time() + 1 * 3600)
+            (y, m, d, hh, mm, ss, wd, yd) = utils.dst_time()
 
             if y > 2000:
                 if not (self.lh == hh and self.lm == mm):
@@ -237,45 +250,47 @@ class Piec:
 
     async def handle_display(self):
         while True:
-            # utils.log_message('HANDLE DISPLAY')
-            if self.state < 2:
-                await self.devices.display_temperature()
-                dd = [1] if self.disp_state % 2 else []
-                if self.disp_state <= 40:
-                    curr_temp = int(utils.get_config("piec_temperatura", 0))
-                    self.devices.led_write_number(curr_temp, 0, dd)
-                    self.devices.led_write_number(None, 2)
-                    self.devices.led_write_number(None, 3)
-                elif 40 < self.disp_state <= 80:
-                    val = utils.wifi_signal()
-                    self.devices.led_write_number(val, 0, dd)
-                elif 80 < self.disp_state <= 120:
-                    (y, m, d, hh, mm, ss, wd, yd) = utime.localtime(utime.time() + 1 * 3600)
-                    if hh < 10:
-                        self.devices.led_write_number(0, 0, [])
-                        if len(dd) == 1:
-                            dd = [0]
-                        self.devices.led_write_number(hh, 1, dd)
-                    else:
-                        self.devices.led_write_number(hh, 0, dd)
-                    if mm < 10:
-                        self.devices.led_write_number(0, 2, [])
-                        self.devices.led_write_number(mm, 3, [])
-                    else:
-                        self.devices.led_write_number(mm, 2, [])
+            try:
+                if self.state < 2:
+                    await self.devices.display_temperature()
+                    dd = [1] if self.disp_state % 2 else []
+                    if self.disp_state <= 40:
+                        curr_temp = int(utils.get_config("piec_temperatura", 0))
+                        self.devices.led_write_number(curr_temp, 0, dd)
+                        self.devices.led_write_number(None, 2)
+                        self.devices.led_write_number(None, 3)
+                    elif 40 < self.disp_state <= 80:
+                        val = utils.wifi_signal()
+                        self.devices.led_write_number(val, 0, dd)
+                    elif 80 < self.disp_state <= 120:
+                        (y, m, d, hh, mm, ss, wd, yd) = utils.dst_time()
+                        if hh < 10:
+                            self.devices.led_write_number(0, 0, [])
+                            if len(dd) == 1:
+                                dd = [0]
+                            self.devices.led_write_number(hh, 1, dd)
+                        else:
+                            self.devices.led_write_number(hh, 0, dd)
+                        if mm < 10:
+                            self.devices.led_write_number(0, 2, [])
+                            self.devices.led_write_number(mm, 3, [])
+                        else:
+                            self.devices.led_write_number(mm, 2, [])
 
-                await self.devices.move_servo(utils.map_temp_to_servo(int(utils.get_config("piec_temperatura", 40))))
-                self.disp_state += 1
-                if self.disp_state > 120:
-                    self.disp_state = 0
-            else:
-                if self.edit_state % 2 == 0:
-                    self.devices.write_display(5, 79)
+                    await self.devices.move_servo(utils.map_temp_to_servo(int(utils.get_config("piec_temperatura", 40))))
+                    self.disp_state += 1
+                    if self.disp_state > 120:
+                        self.disp_state = 0
                 else:
-                    self.devices.write_display(5, 0)
-                self.edit_state += 1
-                if self.edit_state > 100:
-                    self.edit_state = 0
+                    if self.edit_state % 2 == 0:
+                        self.devices.write_display(5, 79)
+                    else:
+                        self.devices.write_display(5, 0)
+                    self.edit_state += 1
+                    if self.edit_state > 100:
+                        self.edit_state = 0
+            except Exception as err:
+                pass
             await uasyncio.sleep_ms(250)
 
     def run(self):
@@ -293,7 +308,5 @@ class Piec:
 utils.load_config()
 utils.wifi_disconnect()
 
-devices = devices.Devices()
-
-p = Piec(devices)
+p = Piec()
 p.run()

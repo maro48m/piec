@@ -105,13 +105,13 @@
             var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
             xmlDoc.onerror = clearval;
-            xmlDoc.open("GET", "api/hist_termo?d=" + new Date().getTime(), true);
+            xmlDoc.open("GET", "/api/hist_termo?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 
         function process(data) {
-            if (data.target.responseText.indexOf('<') > 0){
-                loadData()
+            if (data.target.responseText.indexOf('<') >= 0){
+                loadData();
             }
             else
                 document.getElementById('hist').value = data.target.responseText;
@@ -129,7 +129,7 @@
         }
 
         window.onload = function () {
-            setTimeout(loadData, 1000);
+            loadData();
         };
 
         function dataSaved(data) {

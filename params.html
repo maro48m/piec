@@ -130,17 +130,12 @@
         function loadData() {
             var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
-            xmlDoc.open("GET", "api/config.json?d=" + new Date().getTime(), true);
+            xmlDoc.open("GET", "/api/params_get.json?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 
         function process(data) {
-            if (data.target.responseText.indexOf('<') > 0){
-                loadData()
-            }
-            else {
-
-
+            try{
                 var dane = JSON.parse(data.target.responseText);
                 document.getElementById('wifi_ssid').value = dane['wifi_ssid'];
                 document.getElementById('wifi_passwd').value = dane['wifi_passwd'];
@@ -172,11 +167,13 @@
                 document.getElementById('hostname').value = dane['hostname'];
 
                 document.getElementById("savebtn").disabled = false;
+            } catch (e) {
+                loadData();
             }
         }
 
         window.onload = function () {
-            setTimeout(loadData, 1000);
+            loadData();
         };
 
         function saveData() {

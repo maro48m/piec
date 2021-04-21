@@ -167,11 +167,31 @@ def clear():
 
 
 def czas(sec=False):
-    (y, m, d, hh, mm, ss, wd, yd) = utime.localtime(utime.time() + 1 * 3600)
+    (y, m, d, hh, mm, ss, wd, yd) = dst_time()
     if sec:
         return "%04d-%02d-%02d %02d:%02d:%02d" % (y, m, d, hh, mm, ss)
     else:
         return "%04d-%02d-%02d %02d:%02d" % (y, m, d, hh, mm)
+
+
+def dst_time():
+    year = utime.localtime()[0]  # get current year
+    # print(year)
+    HHMarch = utime.mktime(
+        (year, 3, (14 - (int(5 * year / 4 + 1)) % 7), 1, 0, 0, 0, 0, 0))  # Time of March change to DST
+    HHNovember = utime.mktime(
+        (year, 10, (7 - (int(5 * year / 4 + 1)) % 7), 1, 0, 0, 0, 0, 0))  # Time of October change to EST
+    # print(HHNovember)
+    now = utime.time()
+    delta = 1 * 3600
+    if now < HHMarch:  # we are before last sunday of march
+        delta = 1 * 3600
+    elif now < HHNovember:  # we are before last sunday of october
+        delta = 2 * 3600
+    else:  # we are after last sunday of october
+        delta = 1 * 3600
+    dst = utime.localtime(now + delta)
+    return dst
 
 
 def log_exception(exception, log_level=1, save_to_file=True):
@@ -254,14 +274,6 @@ async def remove_hist(file):
             unlock_file(hf)
         except Exception as err:
             print(err)
-
-
-def get_epoch(dts):
-    tt = dts.split(" ")
-    dt = tt[0].split("-")
-    ht = tt[1].split(":")
-    ep = utime.mktime((int(dt[0]), int(dt[1]), int(dt[2]), int(ht[0]), int(ht[1]), int(ht[2]), 0, 0))
-    return ep
 
 
 def get_data():
