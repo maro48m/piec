@@ -1,11 +1,11 @@
 import utils
-import utime
 import devices
 import gc
 import web_helper
 from web import handle_api, send_file
 import uasyncio
 import sys
+import utime
 
 
 class Piec:
@@ -22,6 +22,7 @@ class Piec:
         self.edit_temp = 0
         self.state = 1  # 0-sleep, 1 - display, 2 - edit
         self.disp_state = 0
+        self.lcd_state = 0
         self.edit_state = 0
 
         self.btn_task = None
@@ -31,18 +32,7 @@ class Piec:
         self.timer_task = None
         self.wifi_task = None
         self.control_task = None
-
-        self.btn_cnt = 0
-        self.joy_cnt = 0
-        self.disp_cnt = 0
-        self.timer_cnt = 0
-        self.wifi_cnt = 0
-
-        self.last_btn_cnt = 0
-        self.last_joy_cnt = 0
-        self.last_disp_cnt = 0
-        self.last_timer_cnt = 0
-        self.last_wifi_cnt = 0
+        self.lcd_task = None
 
     async def set_temperature(self, new_temp, zapisz=True):
         czas = utils.czas()
@@ -153,7 +143,7 @@ class Piec:
             del buf
             gc.collect()
 
-        #print(request)
+        # print(request)
         rq = web_helper.parse_request(request)
 
         # utils.log_message(rq)
@@ -185,11 +175,10 @@ class Piec:
         if not handled:
             await send_file(writer, 'index.html', 'text/html')
         del rq
-        #utils.log_message('WEB REQUEST DONE')
+        # utils.log_message('WEB REQUEST DONE')
 
         writer.close()
         await writer.wait_closed()
-
 
     async def handle_joystick(self):
         while True:
@@ -225,6 +214,7 @@ class Piec:
                     self.devices.led_write_number(None, 2)
                     self.devices.led_write_number(None, 3)
                 if self.state == 2:
+                    self.lcd_state = 0
                     self.edit_temp = int(utils.get_config("piec_temperatura", 0))
                     self.devices.led_write_number(self.edit_temp)
                     self.devices.led_write_number(None, 2)
@@ -232,6 +222,7 @@ class Piec:
                 if self.state == 3:
                     self.state = 1
                     self.disp_state = 0
+                    self.lcd_state = 0
                     curr_temp = int(utils.get_config("piec_temperatura", 0))
                     if self.edit_temp != curr_temp:
                         await self.set_temperature(int(self.edit_temp))
@@ -250,6 +241,8 @@ class Piec:
 
     async def handle_display(self):
         while True:
+            if self.devices.display is None:
+                return
             try:
                 if self.state < 2:
                     await self.devices.display_temperature()
@@ -277,7 +270,8 @@ class Piec:
                         else:
                             self.devices.led_write_number(mm, 2, [])
 
-                    await self.devices.move_servo(utils.map_temp_to_servo(int(utils.get_config("piec_temperatura", 40))))
+                    await self.devices.move_servo(
+                        utils.map_temp_to_servo(int(utils.get_config("piec_temperatura", 40))))
                     self.disp_state += 1
                     if self.disp_state > 120:
                         self.disp_state = 0
@@ -293,6 +287,89 @@ class Piec:
                 pass
             await uasyncio.sleep_ms(250)
 
+    async def handle_lcd(self):
+        while True:
+            wait = 500
+            if self.devices.lcd is None:
+                return
+            try:
+                t = await self.devices.thermometer_value()
+                text = utils.czas(False, True, False)
+                self.devices.write_lcd_at_pos(text, 0, 0)
+
+                self.devices.write_lcd_at_pos("T:%2.1f" % t, 6, 0)
+                self.devices.write_lcd_at_pos("%03d" % utils.wifi_signal(), 13, 0)
+
+                if self.state < 2:
+                    if self.lcd_state < 20:
+                        if self.lcd_state == 0:
+                            self.devices.write_lcd_at_pos("Piec:           ", 0, 1)
+                            self.devices.write_lcd_at_pos("o", 9, 1)
+                            ctemp = int(utils.get_config("piec_temperatura", 0))
+                            self.devices.write_lcd_at_pos("%02d" % ctemp, 6, 1)
+                            ctime = utils.get_config('piec_ostatnia_aktualizacja', '')
+                            self.devices.write_lcd_at_pos(ctime[11:16], 11, 1)
+                    elif self.lcd_state < 40:
+                        if self.lcd_state == 20:
+                            self.devices.write_lcd_at_pos("Nast.:          ", 0, 1)
+                            self.devices.write_lcd_at_pos("o", 9, 1)
+                            (ntime, ntemp) = self.find_next_temp()
+                            if ntemp <= -1:
+                                self.lcd_state = 40
+                            else:
+                                self.devices.write_lcd_at_pos("%02d" % ntemp, 6, 1)
+                                self.devices.write_lcd_at_pos(ntime, 11, 1)
+
+                    self.lcd_state += 1
+                    if self.lcd_state >= 40:
+                        self.lcd_state = 0
+                else:
+                    if self.lcd_state == 0:
+                        self.devices.write_lcd_at_pos("Zmiana na:      ", 0, 1)
+                        self.lcd_state = -1
+                    elif self.lcd_state > 0:
+                        self.lcd_state = 0
+                    self.devices.write_lcd_at_pos("%02d" % self.edit_temp, 11, 1)
+                    wait = 250
+            except Exception as err:
+                print(err)
+            await uasyncio.sleep_ms(wait)
+
+    def find_next_temp(self):
+        times = utils.get_config("piec_czasy", {})
+        if len(times) == 0:
+            return "", -1
+        tdt = []
+        ttt = {}
+        (y, m, d, hh, mm, ss, wd, yd) = utils.dst_time()
+        rp = -1
+        rt = ""
+        if y > 2000:
+            cdt = utime.mktime((y, m, d, hh, mm, 0, 0, 0))
+            for t in times:
+                th = t.split(':')[0]
+                tm = int(t.split(':')[1])
+                tmp = times[t]
+                if th == '**':
+                    dt = utime.mktime((y, m, d, hh+1, tm, 0, 0, 0))
+                    tdt.append(dt)
+                    ttt[dt] = tmp
+                    th = hh
+                else:
+                    th = int(th)
+                if th < hh or (th == hh and tm < mm):
+                    dt = utime.mktime((y, m, d+1, th, tm, 0, 0, 0))
+                else:
+                    dt = utime.mktime((y, m, d, th, tm, 0, 0, 0))
+                tdt.append(dt)
+                ttt[dt] = tmp
+            ntdt = [item for item in tdt if item >= cdt]
+            closest = sorted(ntdt, key=lambda d: (d - cdt))[0]
+            (y, m, d, hh, mm, ss, wd, yd) = utime.localtime(closest)
+            rt = "%02d:%02d" % (hh, mm)
+            rp = ttt[closest]
+        return rt, rp
+
     def run(self):
         loop = uasyncio.get_event_loop()
         loop.create_task(self.set_temperature(int(utils.get_config("piec_temperatura", 40)), False))
@@ -301,6 +378,7 @@ class Piec:
         self.btn_task = loop.create_task(self.handle_button())
         self.joy_task = loop.create_task(self.handle_joystick())
         self.display_task = loop.create_task(self.handle_display())
+        self.lcd_task = loop.create_task(self.handle_lcd())
         self.web_task = loop.create_task(uasyncio.start_server(self.handle_web, '0.0.0.0', 80))
         loop.run_forever()
 

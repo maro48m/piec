@@ -1,7 +1,7 @@
 import machine
 import onewire
 import ds18x20
-import utime
+import uasyncio
 import utils
 
 
@@ -41,7 +41,7 @@ class Sensory:
             for x in range(termo_cnt):
                 try:
                     ds.convert_temp()
-                    utime.sleep_ms(int(750 / (2 ** (12 - termo_res))))
+                    await uasyncio.sleep_ms(int(750 / (2 ** (12 - termo_res))))
                     for rom in roms:
                         t = ds.read_temp(rom)
                         temperature += t

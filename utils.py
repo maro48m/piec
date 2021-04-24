@@ -166,12 +166,18 @@ def clear():
     os.remove('main.py')
 
 
-def czas(sec=False):
+def czas(date=True, time=True, sec=False):
     (y, m, d, hh, mm, ss, wd, yd) = dst_time()
-    if sec:
-        return "%04d-%02d-%02d %02d:%02d:%02d" % (y, m, d, hh, mm, ss)
-    else:
-        return "%04d-%02d-%02d %02d:%02d" % (y, m, d, hh, mm)
+    t = ""
+    if date:
+        t += "%04d-%02d-%02d" % (y, m, d)
+    if time:
+        if t != "":
+            t += " "
+        t += "%02d:%02d" % (hh, mm)
+        if sec:
+            t += ":%02d" % ss
+    return t
 
 
 def dst_time():

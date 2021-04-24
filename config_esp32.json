@@ -7,5 +7,11 @@
   "servo_pin__comment": "D15",
   "display_pin": 12,
   "display_pin__comment": "D14-CLK, D13-DIN, D12-CS",
-  "adc_pin": 32
+  "adc_pin": 32,
+  "lcd_rs_pin": 23,
+  "lcd_enable_pin": 19,
+  "lcd_d4_pin": 5,
+  "lcd_d5_pin": 18,
+  "lcd_d6_pin": 21,
+  "lcd_d7_pin": 22
 }
