@@ -1,10 +1,11 @@
 import utime
-from machine import Pin, SPI, PWM, ADC
+from machine import Pin, SPI, PWM, ADC, I2C
 import utils
 import max7219
 import sensors
 import sys
 from esp32_gpio_lcd import GpioLcd
+from esp8266_i2c_lcd import I2cLcd
 
 
 class Devices:
@@ -19,6 +20,8 @@ class Devices:
         if int(utils.get_config("servo_pin", -1)) > -1:
             self.servo_pin = Pin(int(utils.get_config("servo_pin", 4)))
             self.servo = PWM(self.servo_pin, freq=50)
+            self.servo.duty(20)
+            self.servo.duty(utils.map_temp_to_servo(int(utils.get_config("piec_temperatura", 40))))
 
         if int(utils.get_config("display_pin", -1)) > -1:
             if sys.platform == 'esp32':
@@ -38,6 +41,12 @@ class Devices:
                                d6_pin=Pin(int(utils.get_config("lcd_d6_pin", 21))),
                                d7_pin=Pin(int(utils.get_config("lcd_d7_pin", 22))),
                                num_lines=2, num_columns=16)
+            self.lcd.clear()
+
+        if int(utils.get_config("lcd_sda_pin", -1)) > -1:
+            self.i2c = I2C(scl=Pin(int(utils.get_config("lcd_scl_pin", -1))), sda=Pin(int(utils.get_config("lcd_sda_pin", -1))), freq=100000)
+            self.lcd = I2cLcd(self.i2c, 0x27, 2, 16)
+            self.lcd.hide_cursor()
             self.lcd.clear()
 
         if int(utils.get_config("button_pin", -1)) > -1:

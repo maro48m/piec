@@ -6,9 +6,12 @@
   "display_pin__comment": "D14-CLK, D13-DIN, D33-CS",
   "adc_pin": 32,
   "lcd_rs_pin": 23,
-  "lcd_enable_pin": 19,
+  "lcd_enable_pin": -1,
+  "_lcd_enable_pin": 19,
   "lcd_d4_pin": 25,
   "lcd_d5_pin": 18,
   "lcd_d6_pin": 21,
-  "lcd_d7_pin": 22
+  "lcd_d7_pin": 22,
+  "lcd_sda_pin": 21,
+  "lcd_scl_pin": 18
 }
