@@ -1,5 +1,5 @@
 import utime
-from machine import Pin, SPI, PWM, ADC, I2C
+from machine import Pin, SPI, PWM, ADC, SoftI2C
 import utils
 import max7219
 import sensors
@@ -44,7 +44,9 @@ class Devices:
             self.lcd.clear()
 
         if int(utils.get_config("lcd_sda_pin", -1)) > -1:
-            self.i2c = I2C(scl=Pin(int(utils.get_config("lcd_scl_pin", -1))), sda=Pin(int(utils.get_config("lcd_sda_pin", -1))), freq=100000)
+            self.i2c = SoftI2C(scl=Pin(int(utils.get_config("lcd_scl_pin", -1))),
+                               sda=Pin(int(utils.get_config("lcd_sda_pin", -1))),
+                               freq=100000)
             self.lcd = I2cLcd(self.i2c, 0x27, 2, 16)
             self.lcd.hide_cursor()
             self.lcd.clear()

@@ -350,32 +350,39 @@ class Piec:
             return "", -1
         tdt = []
         ttt = {}
-        (y, m, d, hh, mm, ss, wd, yd) = utils.dst_time()
+        (curr_y, curr_m, curr_d, curr_hh, curr_mm, curr_ss, curr_wd, curr_yd) = utils.dst_time()
         rp = -1
         rt = ""
-        if y > 2000:
-            cdt = utime.mktime((y, m, d, hh, mm, 0, 0, 0))
+        if curr_y > 2000:
+            cdt = utime.mktime((curr_y, curr_m, curr_d, curr_hh, curr_mm, 0, 0, 0))
             for t in times:
                 th = t.split(':')[0]
                 tm = int(t.split(':')[1])
                 tmp = times[t]
                 if th == '**':
-                    dt = utime.mktime((y, m, d, hh+1, tm, 0, 0, 0))
+                    dt = utime.mktime((curr_y, curr_m, curr_d, curr_hh+1, tm, 0, 0, 0))
                     tdt.append(dt)
                     ttt[dt] = tmp
-                    th = hh
+                    th = curr_hh
                 else:
                     th = int(th)
-                if th < hh or (th == hh and tm < mm):
-                    dt = utime.mktime((y, m, d+1, th, tm, 0, 0, 0))
+
+                if th < curr_hh or (th == curr_hh and tm < curr_mm):
+                    dt = utime.mktime((curr_y, curr_m, curr_d+1, th, tm, 0, 0, 0))
+                elif th == curr_hh and tm == curr_mm:
+                    ctime = utils.get_config('piec_ostatnia_aktualizacja', '')
+                    ctime = ctime[11:16]
+                    rt = "%02d:%02d" % (curr_hh, curr_mm)
+                    if ctime != rt:
+                        dt = utime.mktime((curr_y, curr_m, curr_d, th, tm, 0, 0, 0))
                 else:
-                    dt = utime.mktime((y, m, d, th, tm, 0, 0, 0))
+                    dt = utime.mktime((curr_y, curr_m, curr_d, th, tm, 0, 0, 0))
                 tdt.append(dt)
                 ttt[dt] = tmp
             ntdt = [item for item in tdt if item >= cdt]
             closest = sorted(ntdt, key=lambda d: (d - cdt))[0]
-            (y, m, d, hh, mm, ss, wd, yd) = utime.localtime(closest)
-            rt = "%02d:%02d" % (hh, mm)
+            (curr_y, curr_m, curr_d, curr_hh, curr_mm, curr_ss, curr_wd, curr_yd) = utime.localtime(closest)
+            rt = "%02d:%02d" % (curr_hh, curr_mm)
             rp = ttt[closest]
         return rt, rp
 

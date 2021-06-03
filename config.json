@@ -9,7 +9,7 @@
   "wifi_ssid": "zrodlo",
   "wifi_passwd": "LothLorien.#13",
   "wifi_timeout": 15000,
-  "hostname": "piec3",
+  "hostname": "piec",
   "ntp_server": "0.pl.pool.ntp.org",
   "ntp_enabled": true,
   "log_level": 3,
