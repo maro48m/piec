@@ -17,7 +17,7 @@ async def send_file(writer, file_name, header):
         await utils.lock_file(file_name)
         #print('SEND FILE - locked')
         with open(file_name, 'r') as fi:
-            while True:
+            while 1:
                 buf = fi.read(bufsize)
                 if buf == '':
                     break

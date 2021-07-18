@@ -1,11 +1,7 @@
 import utime
 from machine import Pin, SPI, PWM, ADC, SoftI2C
 import utils
-import max7219
-import sensors
 import sys
-from esp32_gpio_lcd import GpioLcd
-from esp8266_i2c_lcd import I2cLcd
 
 
 class Devices:
@@ -22,18 +18,24 @@ class Devices:
             self.servo = PWM(self.servo_pin, freq=50)
             self.servo.duty(20)
             self.servo.duty(utils.map_temp_to_servo(int(utils.get_config("piec_temperatura", 40))))
+            del self.servo
 
         if int(utils.get_config("display_pin", -1)) > -1:
+            import max7219
+
             if sys.platform == 'esp32':
                 self.spi = SPI(1, baudrate=10000000, polarity=1, phase=0, sck=Pin(14), mosi=Pin(13))
             else:
                 self.spi = SPI(1, baudrate=10000000, polarity=0, phase=0)
+
             self.display_pin = Pin(int(utils.get_config("display_pin", 15)), Pin.OUT)
             self.display = max7219.Matrix8x8(self.spi, self.display_pin, 1)
             self.display.brightness(0)
             self.display.fill(0)
             self.display.show()
+
         if int(utils.get_config("lcd_enable_pin", -1)) > -1:
+            from esp32_gpio_lcd import GpioLcd
             self.lcd = GpioLcd(rs_pin=Pin(int(utils.get_config("lcd_rs_pin", 23))),
                                enable_pin=Pin(int(utils.get_config("lcd_enable_pin", 19))),
                                d4_pin=Pin(int(utils.get_config("lcd_d4_pin", 5))),
@@ -41,9 +43,11 @@ class Devices:
                                d6_pin=Pin(int(utils.get_config("lcd_d6_pin", 21))),
                                d7_pin=Pin(int(utils.get_config("lcd_d7_pin", 22))),
                                num_lines=2, num_columns=16)
+            self.lcd.hide_cursor()
             self.lcd.clear()
 
         if int(utils.get_config("lcd_sda_pin", -1)) > -1:
+            from esp8266_i2c_lcd import I2cLcd
             self.i2c = SoftI2C(scl=Pin(int(utils.get_config("lcd_scl_pin", -1))),
                                sda=Pin(int(utils.get_config("lcd_sda_pin", -1))),
                                freq=100000)
@@ -62,6 +66,7 @@ class Devices:
                 self.adc.width(ADC.WIDTH_10BIT)
 
         if int(utils.get_config('thermometer_pin', -1)) > -1:
+            import sensors
             self.thermometer = sensors.Sensory()
 
     def write_display(self, fld, val):
@@ -69,8 +74,10 @@ class Devices:
             self.display._write(fld, val)
 
     async def move_servo(self, val):
-        if self.servo is not None:
+        if self.servo_pin is not None:
+            self.servo = PWM(self.servo_pin, freq=50)
             self.servo.duty(val)
+            del self.servo
 
     def button_value(self):
         if self.button is not None:

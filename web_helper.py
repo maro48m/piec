@@ -132,7 +132,7 @@ async def send_chart_data2(writer):
                 c = 0
                 data = ""
 
-                while True:
+                while 1:
                     buf = fi.readline()
                     if str(buf) == '':
                         break

@@ -9,7 +9,7 @@ import uasyncio
 
 file_locks = {}
 config = {}
-
+curr_bssid = ""
 
 def val_map(x, in_min, in_max, out_min, out_max):
     return max(min(out_max, (x - in_min) * (out_max - out_min) // (in_max - in_min) + out_min), out_min)
@@ -73,7 +73,7 @@ def select_best_ap():
     min_rssi = -100
     bssid = b''
     if not sta_if.active():
-        sta_if.wifi_ps(network.WIFI_PS_NONE)
+        # sta_if.wifi_ps(network.WIFI_PS_NONE)
         sta_if.active(True)
     for ap in sta_if.scan():
         if ap[0].decode('utf-8') == get_config("wifi_ssid"):
@@ -84,6 +84,7 @@ def select_best_ap():
 
 
 def wifi_connect():
+    global curr_bssid
     sta_if = network.WLAN(network.STA_IF)
     ap_if = network.WLAN(network.AP_IF)
 
@@ -101,8 +102,14 @@ def wifi_connect():
         ap_if.active(False)
 
     if not sta_if.active():
-        sta_if.wifi_ps(network.WIFI_PS_NONE)
+        # sta_if.wifi_ps(network.WIFI_PS_NONE)
         sta_if.active(True)
+
+    if sta_if.isconnected():
+        if wifi_signal() < -40:
+            bssid = select_best_ap()
+            if bssid != curr_bssid:
+                wifi_disconnect()
 
     if not sta_if.isconnected():
         if sta_if.status() not in (network.STAT_CONNECTING, network.STAT_GOT_IP):
@@ -121,13 +128,18 @@ def wifi_connect():
             elif (sys.platform == 'esp8266' and sta_if.status() == network.STAT_CONNECT_FAIL) or (
                     sta_if.status() == network.STAT_WRONG_PASSWORD):
                 break
-
+        if sta_if.status() == network.STAT_GOT_IP:
+            curr_bssid = bssid
     return sta_if.status()
 
 
 def wifi_signal():
     sta_if = network.WLAN(network.STA_IF)
-    return sta_if.status("rssi")
+    try:
+        signal = sta_if.status("rssi")
+    except OSError as e:
+        signal = -100
+    return signal
 
 
 def wifi_connected():

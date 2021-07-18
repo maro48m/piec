@@ -87,7 +87,7 @@ class Piec:
         self.save_times(times)
 
     async def handle_timer(self):
-        while True:
+        while 1:
             times = utils.get_config("piec_czasy", {})
             if self.time_update == 0 and utils.wifi_connected():
                 utils.settime()
@@ -130,7 +130,7 @@ class Piec:
         bufsize = 10
         if sys.platform == 'esp32':
             bufsize = -1
-        while True:
+        while 1:
             buf = b''
             try:
                 buf = await uasyncio.wait_for(reader.read(bufsize), 0.5)
@@ -182,7 +182,7 @@ class Piec:
         await writer.wait_closed()
 
     async def handle_joystick(self):
-        while True:
+        while 1:
             # utils.log_message('HANDLE JOYSTICK')
             if self.edit_temp == 0:
                 self.edit_temp = int(utils.get_config("piec_temperatura", 0))
@@ -204,7 +204,7 @@ class Piec:
                 await uasyncio.sleep_ms(500)
 
     async def handle_button(self):
-        while True:
+        while 1:
             val = self.devices.button_value()
             # utils.log_message('HANDLE BUTTON %d %d' % (val, self.btn_val))
             if self.btn_val == 1 and val == 0:
@@ -237,14 +237,14 @@ class Piec:
             await uasyncio.sleep_ms(150)
 
     async def handle_wifi(self):
-        while True:
+        while 1:
             # utils.log_message('HANDLE WIFI')
-            if utils.wifi_connected() is False:
-                utils.wifi_connect()
+            # if utils.wifi_connected() is False:
+            utils.wifi_connect()
             await uasyncio.sleep(30)
 
     async def handle_display(self):
-        while True:
+        while 1:
             if self.devices.display is None:
                 return
             try:
@@ -292,7 +292,7 @@ class Piec:
             await uasyncio.sleep_ms(250)
 
     async def handle_lcd(self):
-        while True:
+        while 1:
             wait = 500
             if self.devices.lcd is None:
                 return
@@ -339,10 +339,9 @@ class Piec:
             await uasyncio.sleep_ms(wait)
 
     async def handle_thermometer(self):
-        while True:
+        while 1:
             self.curr_temp = await self.devices.thermometer_value()
             await uasyncio.sleep_ms(500)
-
 
     def find_next_temp(self):
         times = utils.get_config("piec_czasy", {})
