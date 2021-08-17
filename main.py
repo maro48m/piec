@@ -187,6 +187,8 @@ class Piec:
             if self.edit_temp == 0:
                 self.edit_temp = int(utils.get_config("piec_temperatura", 0))
             if self.state in (2, 3, 4, 5):
+                if self.devices.lcd_light > 0:
+                    self.devices.lcd_light = 0
                 val = self.devices.joy_val()
                 if val <= 200:
                     if self.edit_temp < int(utils.get_config("piec_temperatura_max", 90)):
@@ -208,30 +210,32 @@ class Piec:
             val = self.devices.button_value()
             # utils.log_message('HANDLE BUTTON %d %d' % (val, self.btn_val))
             if self.btn_val == 1 and val == 0:
-                self.state += 1
-                if self.state == 1:
-                    curr_temp = int(utils.get_config("piec_temperatura", 0))
-                    self.devices.led_write_number(curr_temp)
-                    self.devices.led_write_number(None, 2)
-                    self.devices.led_write_number(None, 3)
-                if self.state == 2:
-                    self.lcd_state = 0
-                    self.edit_temp = int(utils.get_config("piec_temperatura", 0))
-                    self.devices.led_write_number(self.edit_temp)
-                    self.devices.led_write_number(None, 2)
-                    self.devices.led_write_number(None, 3)
-                if self.state == 3:
-                    curr_temp = int(utils.get_config("piec_temperatura", 0))
-                    if self.edit_temp != curr_temp:
-                        await self.set_temperature(int(self.edit_temp))
+                if self.devices.lcd_light != -1:
+                    self.state += 1
+                    if self.state == 1:
+                        curr_temp = int(utils.get_config("piec_temperatura", 0))
+                        self.devices.led_write_number(curr_temp)
+                        self.devices.led_write_number(None, 2)
+                        self.devices.led_write_number(None, 3)
+                    if self.state == 2:
+                        self.lcd_state = 0
+                        self.edit_temp = int(utils.get_config("piec_temperatura", 0))
                         self.devices.led_write_number(self.edit_temp)
-                    self.edit_temp = 0
-                    self.devices.write_display(5, 0)
+                        self.devices.led_write_number(None, 2)
+                        self.devices.led_write_number(None, 3)
+                    if self.state == 3:
+                        curr_temp = int(utils.get_config("piec_temperatura", 0))
+                        if self.edit_temp != curr_temp:
+                            await self.set_temperature(int(self.edit_temp))
+                            self.devices.led_write_number(self.edit_temp)
+                        self.edit_temp = 0
+                        self.devices.write_display(5, 0)
 
-                    self.lcd_state = 0
-                    self.disp_state = 0
+                        self.lcd_state = 0
+                        self.disp_state = 0
 
-                    self.state = 1
+                        self.state = 1
+                self.devices.lcd_backlight(0)
 
             self.btn_val = val
             await uasyncio.sleep_ms(150)
@@ -297,45 +301,49 @@ class Piec:
             if self.devices.lcd is None:
                 return
             try:
-                text = utils.czas(False, True, False)
-                self.devices.write_lcd_at_pos(text, 0, 0)
+                if self.devices.lcd_light != -1:
+                    text = utils.czas(False, True, False)
+                    self.devices.write_lcd_at_pos(text, 0, 0)
 
-                self.devices.write_lcd_at_pos("T:%2.1f" % self.curr_temp, 6, 0)
-                self.devices.write_lcd_at_pos("%03d" % utils.wifi_signal(), 13, 0)
+                    self.devices.write_lcd_at_pos("T:%2.1f" % self.curr_temp, 6, 0)
+                    self.devices.write_lcd_at_pos("%03d" % utils.wifi_signal(), 13, 0)
 
-                if self.state < 2:
-                    if self.lcd_state < 20:
+                    if self.state < 2:
+                        if self.lcd_state < 20:
+                            if self.lcd_state == 0:
+                                self.devices.write_lcd_at_pos("Piec:           ", 0, 1)
+                                self.devices.write_lcd_at_pos("o", 9, 1)
+                                ctemp = int(utils.get_config("piec_temperatura", 0))
+                                self.devices.write_lcd_at_pos("%02d" % ctemp, 6, 1)
+                                ctime = utils.get_config('piec_ostatnia_aktualizacja', '')
+                                self.devices.write_lcd_at_pos(ctime[11:16], 11, 1)
+                        elif self.lcd_state < 40:
+                            if self.lcd_state == 20:
+                                self.devices.write_lcd_at_pos("Nast.:          ", 0, 1)
+                                self.devices.write_lcd_at_pos("o", 9, 1)
+                                (ntime, ntemp) = self.find_next_temp()
+                                if ntemp <= -1:
+                                    self.lcd_state = 40
+                                else:
+                                    self.devices.write_lcd_at_pos("%02d" % ntemp, 6, 1)
+                                    self.devices.write_lcd_at_pos(ntime, 11, 1)
+
+                        self.lcd_state += 1
+                        if self.lcd_state >= 40:
+                            self.lcd_state = 0
+                    else:
                         if self.lcd_state == 0:
-                            self.devices.write_lcd_at_pos("Piec:           ", 0, 1)
-                            self.devices.write_lcd_at_pos("o", 9, 1)
-                            ctemp = int(utils.get_config("piec_temperatura", 0))
-                            self.devices.write_lcd_at_pos("%02d" % ctemp, 6, 1)
-                            ctime = utils.get_config('piec_ostatnia_aktualizacja', '')
-                            self.devices.write_lcd_at_pos(ctime[11:16], 11, 1)
-                    elif self.lcd_state < 40:
-                        if self.lcd_state == 20:
-                            self.devices.write_lcd_at_pos("Nast.:          ", 0, 1)
-                            self.devices.write_lcd_at_pos("o", 9, 1)
-                            (ntime, ntemp) = self.find_next_temp()
-                            if ntemp <= -1:
-                                self.lcd_state = 40
-                            else:
-                                self.devices.write_lcd_at_pos("%02d" % ntemp, 6, 1)
-                                self.devices.write_lcd_at_pos(ntime, 11, 1)
-
-                    self.lcd_state += 1
-                    if self.lcd_state >= 40:
-                        self.lcd_state = 0
-                else:
-                    if self.lcd_state == 0:
-                        self.devices.write_lcd_at_pos("Zmiana na:      ", 0, 1)
-                        self.lcd_state = -1
-                    elif self.lcd_state > 0:
-                        self.lcd_state = 0
-                    self.devices.write_lcd_at_pos("%02d" % self.edit_temp, 11, 1)
-                    wait = 250
+                            self.devices.write_lcd_at_pos("Zmiana na:      ", 0, 1)
+                            self.lcd_state = -1
+                        elif self.lcd_state > 0:
+                            self.lcd_state = 0
+                        self.devices.write_lcd_at_pos("%02d" % self.edit_temp, 11, 1)
+                        wait = 250
             except Exception as err:
                 print(err)
+            if wait == 500:
+                if self.devices.lcd_light != -1:
+                    self.devices.lcd_light_tick()
             await uasyncio.sleep_ms(wait)
 
     async def handle_thermometer(self):
@@ -388,14 +396,14 @@ class Piec:
     def run(self):
         loop = uasyncio.get_event_loop()
         loop.create_task(self.set_temperature(int(utils.get_config("piec_temperatura", 40)), False))
-        self.wifi_task = loop.create_task(self.handle_wifi())
+
         self.timer_task = loop.create_task(self.handle_timer())
         self.btn_task = loop.create_task(self.handle_button())
         self.joy_task = loop.create_task(self.handle_joystick())
         self.thermo_task = loop.create_task(self.handle_thermometer())
         self.lcd_task = loop.create_task(self.handle_lcd())
         self.display_task = loop.create_task(self.handle_display())
-
+        self.wifi_task = loop.create_task(self.handle_wifi())
         self.web_task = loop.create_task(uasyncio.start_server(self.handle_web, '0.0.0.0', 80))
         loop.run_forever()
 

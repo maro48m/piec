@@ -166,6 +166,17 @@
                 document.getElementById('ntp_server').value = dane['ntp_server'];
                 document.getElementById('hostname').value = dane['hostname'];
 
+                document.getElementById('lcd_sda_pin').value = dane['lcd_sda_pin'];
+                document.getElementById('lcd_scl_pin').value = dane['lcd_scl_pin'];
+                document.getElementById('lcd_backlight').value = dane['lcd_backlight'];
+
+                document.getElementById('lcd_rs_pin').value = dane['lcd_rs_pin'];
+                document.getElementById('lcd_enable_pin').value = dane['lcd_enable_pin'];
+                document.getElementById('lcd_d4_pin').value = dane['lcd_d4_pin'];
+                document.getElementById('lcd_d5_pin').value = dane['lcd_d5_pin'];
+                document.getElementById('lcd_d6_pin').value = dane['lcd_d6_pin'];
+                document.getElementById('lcd_d7_pin').value = dane['lcd_d7_pin'];
+
                 document.getElementById("savebtn").disabled = false;
             } catch (e) {
                 loadData();
@@ -207,7 +218,18 @@
                 'display_pin': document.getElementById('display_pin').value,
                 'ntp_enabled': document.getElementById('ntp_enabled').checked,
                 'ntp_server': document.getElementById('ntp_server').value,
-                'hostname': document.getElementById('hostname').value
+                'hostname': document.getElementById('hostname').value,
+
+                'lcd_sda_pin': document.getElementById('lcd_sda_pin').value,
+                'lcd_scl_pin': document.getElementById('lcd_scl_pin').value,
+                'lcd_backlight': document.getElementById('lcd_backlight').value,
+
+                'lcd_rs_pin': document.getElementById('lcd_rs_pin').value,
+                'lcd_enable_pin': document.getElementById('lcd_enable_pin').value,
+                'lcd_d4_pin': document.getElementById('lcd_d4_pin').value,
+                'lcd_d5_pin': document.getElementById('lcd_d5_pin').value,
+                'lcd_d6_pin': document.getElementById('lcd_d6_pin').value,
+                'lcd_d7_pin': document.getElementById('lcd_d7_pin').value
             }
             xmlDoc.open("POST", "api/params_save?d=" + new Date().getTime(), true);
             xmlDoc.setRequestHeader('Content-type', 'application/json');
@@ -302,6 +324,15 @@
             <div class="label">Termometr: <input type="number" id="thermometer_pin"></div>
             <div class="label">Servo: <input type="number" id="servo_pin"></div>
             <div class="label">Wyświetlacz: <input type="number" id="display_pin"></div>
+            <div class="label">LCD GPIO: <input type="number" id="lcd_enable_pin"></div>
+            <div class="label">LCD RS: <input type="number" id="lcd_rs_pin"></div>
+            <div class="label">LCD D4: <input type="number" id="lcd_d4_pin"></div>
+            <div class="label">LCD D5: <input type="number" id="lcd_d5_pin"></div>
+            <div class="label">LCD D6: <input type="number" id="lcd_d6_pin"></div>
+            <div class="label">LCD D7: <input type="number" id="lcd_d7_pin"></div>
+            <div class="label">LCD SDA: <input type="number" id="lcd_sda_pin"></div>
+            <div class="label">LCD SCL: <input type="number" id="lcd_scl_pin"></div>
+            <div class="label">wygaszenie LCD [min]: <input type="number" id="lcd_backlight"></div>
         </div>
 
         <div class="section"><span>Pozostałe</span></div>

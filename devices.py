@@ -7,6 +7,7 @@ import sys
 class Devices:
     def __init__(self):
         self.lcd = None
+        self.lcd_light = True
         self.servo = None
         self.display = None
         self.adc = None
@@ -144,3 +145,17 @@ class Devices:
         if self.lcd is not None:
             self.lcd.move_to(x, y)
             self.lcd.putstr(text)
+
+    def lcd_backlight(self, val):
+        if self.lcd is not None:
+            self.lcd_light = val
+            if val == 0:
+                self.lcd.hal_backlight_on()
+            else:
+                self.lcd.hal_backlight_off()
+
+    def lcd_light_tick(self):
+        self.lcd_light += 1
+        if self.lcd_light > 120 * int(utils.get_config('lcd_backlight', 2)):
+            self.lcd_backlight(-1)
+
