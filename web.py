@@ -8,10 +8,11 @@ from web_helper import get_header, send_chart_data2
 async def send_file(writer, file_name, header):
     writer.write(get_header(header))
     bufsize = 128
+    buf = None
+
     if sys.platform == 'esp32':
         bufsize = 4096
     try:
-        buf = None
         #print('SEND FILE', file_name)
 
         await utils.lock_file(file_name)
@@ -25,6 +26,7 @@ async def send_file(writer, file_name, header):
                     writer.write(buf.encode('utf8'))
                     await writer.drain()
                 del buf
+                buf = None
             fi.close()
 
     except Exception as eee:
@@ -87,6 +89,15 @@ async def handle_api(writer, request):
     elif request["url"].find("/api/chart.json") > -1:
         writer.write(get_header('application/json'))
         await send_chart_data2(writer)
+    elif request["url"].find("/api/reboot") > -1:
+        writer.write('{"response":"Urządzenie się restartuje. Konieczne przeładowanie strony"}'.encode('utf-8'))
+        await writer.drain()
+        writer.close()
+        await writer.wait_closed()
+        import uasyncio
+        await uasyncio.sleep_ms(500)
+        import machine
+        machine.reset()
     elif request["url"].find("/api/file") > -1:
         writer.write(get_header('application/json'))
         if upload_file(request):
@@ -94,36 +105,18 @@ async def handle_api(writer, request):
         else:
             writer.write('{"response":"Błąd aktualizacji"}'.encode('utf-8'))
         await writer.drain()
+        if request["body"]["reboot"] == "on" and int(request["body"]["chunk"]) == int(request["body"]["chunks"]):
+            import machine
+            machine.reset()
     return True
 
 
 def upload_file(request):
-    #Content-Type': 'multipart/form-data; boundary=----WebKitFormBoundaryUdPTIt4xUUzNAXmx
-    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx
-    # Content-Disposition: form-data; name="start"
-    #
-    # 640
-    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx
-    # Content-Disposition: form-data; name="end"
-    #
-    # 768
-    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx
-    # Content-Disposition: form-data; name="chunks"
-    #
-    # 86
-    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx
-    # Content-Disposition: form-data; name="chunk"
-    #
-    # 6
-    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx
-    # Content-Disposition: form-data; name="file_name"
-    #
-    # main.py
-    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx
-    # Content-Disposition: form-data; name="file"; filename="blob"
-    # Content-Type: application/octet-stream
-    #
-    # utils.get_config("piec_historia_temperatury", True) is True:\r\n            if utime.localtime(utime.time() + 1 * 3600)[0] > 2000:
-    # ------WebKitFormBoundaryUdPTIt4xUUzNAXmx--
-
-    return True
+    print(request)
+    if "file_name" in request["body"].keys():
+        f = open(request["body"]["file_name"], "ab+")
+        f.write(request["body"]["file"])
+        f.close()
+        return True
+    else:
+        return False

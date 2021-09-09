@@ -127,9 +127,14 @@
     <script>
         var chartfile = 'termo';
 
-        function loadData() {
+        function loadData(recur) {
             var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
+            xmlDoc.onerror =function(){
+                if (recur === 0) {
+                    loadData(1);
+                }
+            }
             xmlDoc.open("GET", "/api/dane.json?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
@@ -153,13 +158,13 @@
                 chart.updateSeries([{"name": "Termometr", "data": []}, {"name": "Piec", "data": []}])
                 loadChart();
             } catch (e) {
-                loadData();
+                loadData(0);
             }
 
         }
 
         window.onload = function () {
-            loadData();
+            loadData(0);
         };
 
         function loadChart() {
@@ -360,7 +365,6 @@
         <div>
             <button><a href="/logs">Plik logów</a></button>
             <button><a href="/params">Parametry</a></button>
-            <!--            <button><a href="/fileup">Aktualizacja plików</a></button>-->
         </div>
     </div>
     <div class="section">

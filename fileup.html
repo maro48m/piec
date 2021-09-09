@@ -101,12 +101,13 @@
     </style>
 
     <script>
-        /*function fileUpload(){
+        function fileUpload(){
             var myFile = document.getElementById('file');
             var files = myFile.files;
             var formData = new FormData();
             var file = files[0];
             formData.append('file', file, file.name);
+            formData.append('reboot',document.getElementById('reboot').value)
 
             // Set up the request
             var xmlDoc = new XMLHttpRequest();
@@ -116,17 +117,17 @@
             // Set up a handler for when the task for the request is complete
             xmlDoc.onload = function () {
                 var statusP = document.getElementById('status');
-                if (xmlDoc.status == 200) {
+                if (xmlDoc.status === 200) {
                     statusP.innerHTML = xmlDoc.response;
                 } else {
-                    statusP.innerHTML = 'BŁĄD!';
+                    statusP.innerHTML = 'BŁĄD AKTUALIZACJI!';
                 }
             };
 
             // Send the data.
             xmlDoc.send(formData);
-        }*/
-        function fileUpload(){
+        }
+        function fileUploadChunks(){
             var myFile = document.getElementById('file');
             var files = myFile.files;
             var file = files[0];
@@ -146,6 +147,9 @@
                 end = size;
             }
             if (end < size) {
+                xhr.onerror = function () {
+                  send(file, start, end, sliceSize, size, chunks, chunk)
+                }
                 xhr.onload = function () {
                     if (xhr.readyState === XMLHttpRequest.DONE) {
                         send(file, start + sliceSize, start + (sliceSize * 2), sliceSize, size, chunks, chunk+1)
@@ -165,6 +169,7 @@
             formdata.append('chunk', chunk);
             formdata.append('file_name', file.name);
             formdata.append('file', slicedPart);
+            formdata.append('reboot',document.getElementById('reboot').value)
             statusEl.innerHTML = chunk +"/"+chunks +"("+end+"/"+file.size+")";
 
             xhr.send(formdata);
@@ -217,7 +222,7 @@
         <div class="label">Restart kontrolera po aktualizacji: <input type="checkbox" id="reboot"></div>
         <div>
             <button><a href="/">Powrót</a></button>
-            <button class="savebtn" onclick="fileUpload()">Aktualizuj plik</button>
+            <button class="savebtn" onclick="fileUploadChunks()">Aktualizuj plik</button>
         </div>
     </div>
     </form>

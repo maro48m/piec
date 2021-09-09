@@ -144,7 +144,7 @@ class Piec:
             del buf
             gc.collect()
 
-        # print(request)
+        print(request)
         rq = web_helper.parse_request(request)
 
         # utils.log_message(rq)
@@ -393,6 +393,12 @@ class Piec:
             rp = ttt[closest]
         return rt, rp
 
+    async def start_ftp(self):
+        import uftpd
+        uftpd.stop()
+        uftpd.start(21, 0, False)
+        await uasyncio.sleep_ms(500)
+
     def run(self):
         loop = uasyncio.get_event_loop()
         loop.create_task(self.set_temperature(int(utils.get_config("piec_temperatura", 40)), False))
@@ -405,6 +411,7 @@ class Piec:
         self.display_task = loop.create_task(self.handle_display())
         self.wifi_task = loop.create_task(self.handle_wifi())
         self.web_task = loop.create_task(uasyncio.start_server(self.handle_web, '0.0.0.0', 80))
+        loop.create_task(self.start_ftp())
         loop.run_forever()
 
 

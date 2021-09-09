@@ -38,7 +38,7 @@ def parse_request(request):
     del urls
 
     headers = {}
-    body = b''
+    bd = b''
     hdr = True
     for line in lines[1:]:
         if hdr:
@@ -46,14 +46,40 @@ def parse_request(request):
                 hdr = False
             else:
                 line = unquote(line)
-                hdr = line.split(b': ')
-                if len(hdr) == 2:
-                    headers[hdr[0].decode('ascii')] = hdr[1].decode('ascii')
+                hd = line.split(b': ')
+                if len(hd) == 2:
+                    headers[hd[0].decode('ascii')] = hd[1].decode('ascii')
         else:
-            body += line + b'\r\n'
+            bd += line + b'\r\n'
 
     ret["headers"] = headers
-    ret["body"] = body
+    if "Content-Type" in ret["headers"].keys() and bd != b'':
+        ct = ret["headers"]["Content-Type"]
+        boundary = ct.split('boundary=')[1].encode('ascii')
+        tb = bd.split(b'--' + boundary)
+        body = {}
+
+        for elem in tb:
+            if elem == b'':
+                continue
+            elems = elem.split(b'\r\n\r\n')
+            keys = elems[0]
+            if keys not in (b'--', b''):
+                keys = keys.split(b';')
+                key = b''
+                for k in keys:
+                    if k.split(b'=')[0].strip(b' ') == b'name':
+                        key = k.split(b'=')[1].strip(b'"')
+                        break
+                val = elems[1][:-2]
+                if key != b'file':
+                    body[key.decode('ascii')] = val.decode('ascii')
+                else:
+                    body[key.decode('ascii')] = val
+
+        ret["body"] = body
+        del bd
+
     del lines
     del hdr
     return ret
@@ -172,6 +198,7 @@ async def send_chart_data2(writer):
 
         writer.write(data.encode('utf-8'))
         del data
+
         await writer.drain()
 
         if i == 1:
