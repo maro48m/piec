@@ -305,8 +305,21 @@ class Piec:
                     text = utils.czas(False, True, False)
                     self.devices.write_lcd_at_pos(text, 0, 0)
 
-                    self.devices.write_lcd_at_pos("T:%2.1f" % self.curr_temp, 6, 0)
-                    self.devices.write_lcd_at_pos("%03d" % utils.wifi_signal(), 13, 0)
+                    self.devices.write_lcd_at_pos("%02.1f" % self.curr_temp, 7, 0)
+                    self.devices.write_lcd_char_at_pos(chr(7), 11, 0)
+                    self.devices.write_lcd_at_pos("C", 12, 0)
+                    ws = 0
+                    if utils.wifi_signal() >= -30:
+                        ws = 4
+                    elif utils.wifi_signal() >= -67:
+                        ws = 3
+                    elif utils.wifi_signal() >= -70:
+                        ws = 2
+                    elif utils.wifi_signal() >= -80:
+                        ws = 1
+                    elif utils.wifi_signal() >= -90:
+                        ws = 0
+                    self.devices.write_lcd_char_at_pos(chr(ws), 15, 0)
 
                     if self.state < 2:
                         if self.lcd_state < 20:
