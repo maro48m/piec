@@ -44,6 +44,7 @@ class Devices:
                                d6_pin=Pin(int(utils.get_config("lcd_d6_pin", 21))),
                                d7_pin=Pin(int(utils.get_config("lcd_d7_pin", 22))),
                                num_lines=2, num_columns=16)
+            self.lcd_wifi_chars(self.lcd)
             self.lcd.hide_cursor()
             self.lcd.clear()
 
@@ -53,6 +54,8 @@ class Devices:
                                sda=Pin(int(utils.get_config("lcd_sda_pin", -1))),
                                freq=100000)
             self.lcd = I2cLcd(self.i2c, 0x27, 2, 16)
+            self.lcd_wifi_chars(self.lcd)
+
             self.lcd.hide_cursor()
             self.lcd.clear()
 
@@ -69,6 +72,16 @@ class Devices:
         if int(utils.get_config('thermometer_pin', -1)) > -1:
             import sensors
             self.thermometer = sensors.Sensory()
+
+    def lcd_wifi_chars(self, lcd):
+        if lcd is None:
+            return
+        lcd.custom_char(0, bytearray([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10]))
+        lcd.custom_char(1, bytearray([0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x18]))
+        lcd.custom_char(2, bytearray([0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0x0C, 0x1C]))
+        lcd.custom_char(3, bytearray([0x00, 0x00, 0x00, 0x00, 0x02, 0x06, 0x0E, 0x1E]))
+        lcd.custom_char(4, bytearray([0x00, 0x00, 0x00, 0x01, 0x03, 0x07, 0x0F, 0x1F]))
+        lcd.custom_char(7, bytearray([0x06, 0x09, 0x09, 0x06, 0x00, 0x00, 0x00, 0x00]))
 
     def write_display(self, fld, val):
         if self.display is not None:
@@ -146,6 +159,11 @@ class Devices:
             self.lcd.move_to(x, y)
             self.lcd.putstr(text)
 
+    def write_lcd_char_at_pos(self, char, x, y):
+        if self.lcd is not None:
+            self.lcd.move_to(x, y)
+            self.lcd.putchar(char)
+
     def lcd_backlight(self, val):
         if self.lcd is not None:
             self.lcd_light = val
@@ -158,4 +176,3 @@ class Devices:
         self.lcd_light += 1
         if self.lcd_light > 120 * int(utils.get_config('lcd_backlight', 2)):
             self.lcd_backlight(-1)
-
