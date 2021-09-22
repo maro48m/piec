@@ -64,9 +64,10 @@ def handle_api(req, resp):
     elif req.path.find("/api/chart.json") > -1:
         yield from send_chart_data2(resp)
     elif req.path.find("/api/reboot") > -1:
-        resp.awrite('{"response":"Urządzenie się restartuje. Konieczne przeładowanie strony"}'.encode('utf-8'))
+        yield from resp.awrite('{"response":"Urządzenie się restartuje. Konieczne przeładowanie strony"}'.encode('utf-8'))
+        yield from resp.aclose()
         import uasyncio
-        yield from uasyncio.sleep_ms(500)
+        await uasyncio.sleep_ms(500)
         import machine
         machine.reset()
     return True
@@ -174,4 +175,4 @@ def set_piec(p):
 def start():
     global app
     app = picoweb.WebApp(__name__, ROUTES)
-    app.run(debug=1, port=80, host='0.0.0.0')
+    app.run(debug=-1, port=80, host='0.0.0.0')
