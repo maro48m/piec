@@ -9,10 +9,12 @@ class Devices:
         self.lcd = None
         self.lcd_light = True
         self.servo = None
+        self.servo_pin = None
         self.display = None
         self.adc = None
         self.button = None
         self.thermometer = None
+
 
         if int(utils.get_config("servo_pin", -1)) > -1:
             self.servo_pin = Pin(int(utils.get_config("servo_pin", 4)))

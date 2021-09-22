@@ -1,5 +1,5 @@
 {
-  "wifi_ap_enabled": false,
+  "wifi_ap_enabled": true,
   "wifi_ap_ip": "192.168.23.1",
   "wifi_ap_passwd": "piec1234",
   "wifi_ap_ssid": "piec",
@@ -12,7 +12,6 @@
   "hostname": "piec",
   "ntp_server": "0.pl.pool.ntp.org",
   "ntp_enabled": true,
-  "log_level": 3,
 
   "piec_temperatura": 40,
   "piec_temperatura_min": 30,
@@ -29,18 +28,17 @@
   "piec_historia_temperatury": true,
   "piec_historia_termometru_czas": 5,
 
-  "button_pin": 5,
-  "button_pin__comment": "D1",
-  "thermometer_pin": 2,
-  "thermometer_pin__comment": "D4",
-  "thermometer_res": 9,
-  "thermometer_res__comment": "9 - 0.5°C, 10 - 0.25°C, 11 - 0.125°C, 12 - 0.0625°C",
-  "thermometer_repeat": 5,
-  "servo_pin": 4,
-  "servo_pin__comment": "D2",
-  "servo_min": 37,
-  "servo_max": 115,
-  "display_pin": 15,
-  "display_pin__comment": "D5-CLK, D7-DIN, D8-CS",
-  "adc_pin": 0
+  "//button_pin": 26,
+  "//thermometer_pin": 16,
+  "//thermometer_res": 9,
+  "//thermometer_res__comment": "9 - 0.5°C, 10 - 0.25°C, 11 - 0.125°C, 12 - 0.0625°C",
+  "//thermometer_repeat": 5,
+  "//servo_pin": 17,
+  "//servo_min": 37,
+  "//servo_max": 115,
+  "//display_pin": 27,
+  "//adc_pin": 32,
+  "//lcd_sda_pin": 21,
+  "//lcd_scl_pin": 18,
+  "//lcd_backlight": 2
 }

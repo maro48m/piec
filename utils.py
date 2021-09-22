@@ -96,8 +96,8 @@ def wifi_connect():
 
         ap_if.ifconfig((get_config("wifi_ap_ip"),
                         get_config("wifi_ap_netmask"),
-                        "0.0.0.0",
-                        "0.0.0.0"))
+                        get_config("wifi_ap_ip"),
+                        get_config("wifi_ap_ip")))
     else:
         ap_if.active(False)
 

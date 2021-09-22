@@ -8,11 +8,14 @@ import utils
 class Sensory:
     async def pomiar_temperatury(self, log_to_hist=False):
 
-        termo_pin = int(utils.get_config('thermometer_pin'))
-        termo_res = int(utils.get_config('thermometer_res'))
-        termo_cnt = int(utils.get_config('thermometer_repeat'))
+        termo_pin = int(utils.get_config('thermometer_pin', -1))
+        termo_res = int(utils.get_config('thermometer_res', 9))
+        termo_cnt = int(utils.get_config('thermometer_repeat', 5))
 
         temperature = 0
+        if termo_pin == -1:
+            return 0
+
         cnt = 0
         dat = machine.Pin(termo_pin)
         ds = ds18x20.DS18X20(onewire.OneWire(dat))

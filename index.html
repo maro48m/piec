@@ -190,7 +190,7 @@
             var temp = document.getElementById('temperatura').value;
             var harm = document.getElementById('harmonogram').value;
             xmlDoc.onload = dataSaved;
-            xmlDoc.open("POST", "save?temp=" + temp + "&tempEnd=?times=" + harm + "&timesEnd=&d=" + new Date().getTime(), true);
+            xmlDoc.open("POST", "save?temp=" + temp + "&times=" + harm + "&d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
 

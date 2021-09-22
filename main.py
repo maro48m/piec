@@ -1,10 +1,6 @@
 import utils
 import devices
-import gc
-import web_helper
-from web import handle_api, send_file
 import uasyncio
-import sys
 import utime
 
 
@@ -121,65 +117,6 @@ class Piec:
                         utils.settime()
                         self.lum = mm
             await uasyncio.sleep(30)
-
-    async def handle_web(self, reader, writer):
-        # utils.log_message('HANDLE WEB')
-
-        gc.collect()
-        request = b''
-        bufsize = 10
-        if sys.platform == 'esp32':
-            bufsize = -1
-        while 1:
-            buf = b''
-            try:
-                buf = await uasyncio.wait_for(reader.read(bufsize), 0.5)
-            except uasyncio.TimeoutError:
-                break
-
-            if buf == b'':
-                break
-
-            request += buf
-            del buf
-            gc.collect()
-
-        print(request)
-        rq = web_helper.parse_request(request)
-
-        # utils.log_message(rq)
-        del request
-        handled = False
-        url = rq["url"]
-        if url.find("/api/") > -1:
-            handled = await handle_api(writer, rq)
-        elif url.find("/save") > -1:
-            temp = int(url[url.find("temp=") + len("temp="):url.find("&tempEnd")])
-            times = url[url.find("times=") + len("times="):url.find("&timesEnd")]
-            await self.web_save(temp, times)
-            writer.write(web_helper.get_header('application/json'))
-            writer.write('{"result":"Dane zapisane"}'.encode('utf-8'))
-            await writer.drain()
-            handled = True
-        elif url.find("/hist/termo") > -1:
-            handled = await send_file(writer, 'hist_termo.html', 'text/html')
-        elif url.find("/hist/piec") > -1:
-            handled = await send_file(writer, 'hist_piec.html', 'text/html')
-        elif url.find("/params") > -1:
-            handled = await send_file(writer, 'params.html', 'text/html')
-        elif url.find("/logs") > -1:
-            handled = await send_file(writer, 'logs.html', 'text/html')
-        elif url.find("/logs") > -1:
-            handled = await send_file(writer, 'logs.html', 'text/html')
-        elif url.find("/fileup") > -1:
-            handled = await send_file(writer, 'fileup.html', 'text/html')
-        if not handled:
-            await send_file(writer, 'index.html', 'text/html')
-        del rq
-        # utils.log_message('WEB REQUEST DONE')
-
-        writer.close()
-        await writer.wait_closed()
 
     async def handle_joystick(self):
         while 1:
@@ -414,6 +351,12 @@ class Piec:
         uftpd.start(21, 0, False)
         await uasyncio.sleep_ms(500)
 
+    async def start_webserver(self):
+        import web
+        web.set_piec(self)
+        web.start()
+        await uasyncio.sleep_ms(500)
+
     def run(self):
         loop = uasyncio.get_event_loop()
         loop.create_task(self.set_temperature(int(utils.get_config("piec_temperatura", 40)), False))
@@ -425,7 +368,7 @@ class Piec:
         self.lcd_task = loop.create_task(self.handle_lcd())
         self.display_task = loop.create_task(self.handle_display())
         self.wifi_task = loop.create_task(self.handle_wifi())
-        self.web_task = loop.create_task(uasyncio.start_server(self.handle_web, '0.0.0.0', 80))
+        loop.create_task(self.start_webserver())
         loop.create_task(self.start_ftp())
         loop.run_forever()
 
