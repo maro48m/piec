@@ -1,3 +1,5 @@
+import gc
+
 import utils
 import json
 import sensors
@@ -62,7 +64,7 @@ def handle_api(req, resp):
     elif req.path.find("/api/hist_termo") > -1:
         yield from app.sendfile(resp, 'termometr.hist', content_type='text/plain')
     elif req.path.find("/api/chart.json") > -1:
-        yield from send_chart_data2(resp)
+        yield from send_chart_data(resp)
     elif req.path.find("/api/reboot") > -1:
         yield from resp.awrite('{"response":"Urządzenie się restartuje. Konieczne przeładowanie strony"}'.encode('utf-8'))
         yield from resp.aclose()
@@ -72,11 +74,10 @@ def handle_api(req, resp):
         machine.reset()
     return True
 
-
-async def send_chart_data2(writer):
+async def send_chart_data(writer):
     cmax = 40
     if sys.platform == 'esp32':
-        cmax = 120
+        cmax = 70
 
     for i in range(1, 3):
         if i == 1:
@@ -93,7 +94,7 @@ async def send_chart_data2(writer):
             sqr = True
 
         prev = None
-        writer.write(data.encode('utf-8'))
+        await writer.awrite(data.encode('utf-8'))
         await writer.drain()
 
         data = ""
@@ -123,17 +124,19 @@ async def send_chart_data2(writer):
                         c += 1
 
                         if c == cmax:
-                            writer.write(data.encode('utf-8'))
+                            await writer.awrite(data.encode('utf-8'))
                             await writer.drain()
                             c = 0
                             del data
+                            gc.collect()
                             data = ""
 
                 fi.close()
+                utils.unlock_file(file_name)
         except Exception as eee:
             # utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name, 2)
-            utils.log_exception(eee, 2)
-            pass
+            utils.log_exception(eee, 1)
+            utils.unlock_file(file_name)
 
         if sqr:
             d = [utils.czas(True) + ' GMT', prev]
@@ -142,15 +145,15 @@ async def send_chart_data2(writer):
         d = [utils.czas(True) + ' GMT', curr]
         data += (json.dumps(d))
 
-        writer.write(data.encode('utf-8'))
+        await writer.awrite(data.encode('utf-8'))
         del data
 
         await writer.drain()
 
         if i == 1:
-            writer.write("""]},""".encode('utf-8'))
+            await writer.awrite("""]},""".encode('utf-8'))
         else:
-            writer.write("""]}]""".encode('utf-8'))
+            await writer.awrite("""]}]""".encode('utf-8'))
 
         await writer.drain()
         utils.unlock_file(file_name)
@@ -167,12 +170,9 @@ ROUTES = [
 ]
 
 
-def set_piec(p):
+def start(p):
+    global app
     global piec
     piec = p
-
-
-def start():
-    global app
     app = picoweb.WebApp(__name__, ROUTES)
     app.run(debug=-1, port=80, host='0.0.0.0')

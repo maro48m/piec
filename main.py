@@ -353,8 +353,7 @@ class Piec:
 
     async def start_webserver(self):
         import web
-        web.set_piec(self)
-        web.start()
+        web.start(self)
         await uasyncio.sleep_ms(500)
 
     def run(self):

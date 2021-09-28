@@ -221,7 +221,7 @@ def log_exception(exception, log_level=1, save_to_file=True):
 
     hf = 'log.txt'
     if save_to_file:
-        yield lock_file(hf)
+        yield from lock_file(hf)
         log_file = open(hf, 'a+')
 
         print(czas(True), file=log_file)
@@ -260,9 +260,12 @@ def file_locked(file_name):
 async def lock_file(file_name):
     global file_locks
     try:
+        print('lock', file_name)
         if file_name not in file_locks.keys():
             file_locks[file_name] = uasyncio.Lock()
+        print('wait for', file_name)
         await file_locks[file_name].acquire()
+        print('locked', file_name)
     except Exception as err:
         print(err)
 
@@ -270,8 +273,9 @@ async def lock_file(file_name):
 def unlock_file(file_name):
     global file_locks
     try:
+        print('unlock', file_name)
         if file_name in file_locks.keys():
-            file_locks[file_name].release()
+            file_locks.pop(file_name, None)
     except Exception as err:
         print(err)
 
