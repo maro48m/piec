@@ -214,7 +214,7 @@ def dst_time():
 
 def log_exception(exception, log_level=1, save_to_file=True):
     print(czas(True))
-    if log_level < int(get_config("log_level", 1)):
+    if log_level < 1:
         return
 
     sys.print_exception(exception)

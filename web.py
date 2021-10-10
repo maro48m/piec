@@ -9,7 +9,6 @@ import ure as re
 import picoweb
 
 piec = None
-app = None
 
 
 def save_piec(req, resp):
@@ -18,8 +17,9 @@ def save_piec(req, resp):
     temp = int(req.form["temp"])
     times = req.form["times"]
     if piec is not None:
-        piec.web_save(temp, times)
-        yield from resp.awrite('{"result":"Dane zapisane"}'.encode('utf-8'))
+        await piec.web_save(temp, times)
+        res = {"result": "Dane zapisane", "times": times}
+        yield from resp.awrite(json.dumps(res).encode('utf-8'))
     else:
         yield from resp.awrite('{"result":"Błąd zapisu"}'.encode('utf-8'))
 
@@ -66,7 +66,8 @@ def handle_api(req, resp):
     elif req.path.find("/api/chart.json") > -1:
         yield from send_chart_data(resp)
     elif req.path.find("/api/reboot") > -1:
-        yield from resp.awrite('{"response":"Urządzenie się restartuje. Konieczne przeładowanie strony"}'.encode('utf-8'))
+        yield from resp.awrite(
+            '{"response":"Urządzenie się restartuje. Konieczne przeładowanie strony"}'.encode('utf-8'))
         yield from resp.aclose()
         import uasyncio
         await uasyncio.sleep_ms(500)
@@ -74,10 +75,9 @@ def handle_api(req, resp):
         machine.reset()
     return True
 
+
 async def send_chart_data(writer):
     cmax = 40
-    if sys.platform == 'esp32':
-        cmax = 70
 
     for i in range(1, 3):
         if i == 1:
@@ -132,18 +132,23 @@ async def send_chart_data(writer):
                             data = ""
 
                 fi.close()
+                print('1')
                 utils.unlock_file(file_name)
         except Exception as eee:
             # utils.log_message('BLAD ODCZYTU PLIKU %s' % file_name, 2)
             utils.log_exception(eee, 1)
+            print('e')
             utils.unlock_file(file_name)
 
-        if sqr:
-            d = [utils.czas(True) + ' GMT', prev]
-            data += (json.dumps(d) + ',')
+        if utils.dst_time()[0] > 2000:
+            czas = utils.czas(True)
+            if sqr:
 
-        d = [utils.czas(True) + ' GMT', curr]
-        data += (json.dumps(d))
+                d = [czas + ' GMT', prev]
+                data += (json.dumps(d) + ',')
+
+            d = [czas + ' GMT', curr]
+            data += (json.dumps(d))
 
         await writer.awrite(data.encode('utf-8'))
         del data
@@ -156,6 +161,7 @@ async def send_chart_data(writer):
             await writer.awrite("""]}]""".encode('utf-8'))
 
         await writer.drain()
+        print('f')
         utils.unlock_file(file_name)
 
 
@@ -169,10 +175,10 @@ ROUTES = [
     (re.compile("^/api/(.+)"), handle_api),
 ]
 
+app = picoweb.WebApp(__name__, ROUTES)
 
 def start(p):
     global app
     global piec
     piec = p
-    app = picoweb.WebApp(__name__, ROUTES)
     app.run(debug=-1, port=80, host='0.0.0.0')
