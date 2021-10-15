@@ -194,12 +194,13 @@ def czas(date=True, time=True, sec=False):
 
 def dst_time():
     year = utime.localtime()[0]  # get current year
-    # print(year)
+    print(year)
     HHMarch = utime.mktime(
-        (year, 3, (14 - (int(5 * year / 4 + 1)) % 7), 1, 0, 0, 0, 0, 0))  # Time of March change to DST
+        (year, 3, (31 - (int(5 * year / 4 + 1)) % 7), 1, 0, 0, 0, 0, 0))  # Time of March change to DST
     HHNovember = utime.mktime(
-        (year, 10, (7 - (int(5 * year / 4 + 1)) % 7), 1, 0, 0, 0, 0, 0))  # Time of October change to EST
-    # print(HHNovember)
+        (year, 10, (31 - (int(5 * year / 4 + 1)) % 7), 1, 0, 0, 0, 0, 0))  # Time of October change to EST
+    print(HHMarch)
+    print(HHNovember)
     now = utime.time()
     delta = 1 * 3600
     if now < HHMarch:  # we are before last sunday of march
@@ -208,6 +209,7 @@ def dst_time():
         delta = 2 * 3600
     else:  # we are after last sunday of october
         delta = 1 * 3600
+    print(delta)
     dst = utime.localtime(now + delta)
     return dst
 
