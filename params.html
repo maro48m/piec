@@ -135,7 +135,7 @@
         }
 
         function process(data) {
-            try{
+            try {
                 var dane = JSON.parse(data.target.responseText);
                 document.getElementById('wifi_ssid').value = dane['wifi_ssid'];
                 document.getElementById('wifi_passwd').value = dane['wifi_passwd'];
@@ -161,7 +161,6 @@
                 document.getElementById('button_pin').value = dane['button_pin'];
                 document.getElementById('thermometer_pin').value = dane['thermometer_pin'];
                 document.getElementById('servo_pin').value = dane['servo_pin'];
-                document.getElementById('display_pin').value = dane['display_pin'];
                 document.getElementById('ntp_enabled').checked = dane['ntp_enabled'];
                 document.getElementById('ntp_server').value = dane['ntp_server'];
                 document.getElementById('hostname').value = dane['hostname'];
@@ -169,13 +168,10 @@
                 document.getElementById('lcd_sda_pin').value = dane['lcd_sda_pin'];
                 document.getElementById('lcd_scl_pin').value = dane['lcd_scl_pin'];
                 document.getElementById('lcd_backlight').value = dane['lcd_backlight'];
+                if (dane['aliases'] !== undefined) {
+                    document.getElementById('aliases').value = dane['alt'];
+                }
 
-                document.getElementById('lcd_rs_pin').value = dane['lcd_rs_pin'];
-                document.getElementById('lcd_enable_pin').value = dane['lcd_enable_pin'];
-                document.getElementById('lcd_d4_pin').value = dane['lcd_d4_pin'];
-                document.getElementById('lcd_d5_pin').value = dane['lcd_d5_pin'];
-                document.getElementById('lcd_d6_pin').value = dane['lcd_d6_pin'];
-                document.getElementById('lcd_d7_pin').value = dane['lcd_d7_pin'];
 
                 document.getElementById("savebtn").disabled = false;
             } catch (e) {
@@ -215,7 +211,6 @@
                 'button_pin': document.getElementById('button_pin').value,
                 'thermometer_pin': document.getElementById('thermometer_pin').value,
                 'servo_pin': document.getElementById('servo_pin').value,
-                'display_pin': document.getElementById('display_pin').value,
                 'ntp_enabled': document.getElementById('ntp_enabled').checked,
                 'ntp_server': document.getElementById('ntp_server').value,
                 'hostname': document.getElementById('hostname').value,
@@ -223,13 +218,7 @@
                 'lcd_sda_pin': document.getElementById('lcd_sda_pin').value,
                 'lcd_scl_pin': document.getElementById('lcd_scl_pin').value,
                 'lcd_backlight': document.getElementById('lcd_backlight').value,
-
-                'lcd_rs_pin': document.getElementById('lcd_rs_pin').value,
-                'lcd_enable_pin': document.getElementById('lcd_enable_pin').value,
-                'lcd_d4_pin': document.getElementById('lcd_d4_pin').value,
-                'lcd_d5_pin': document.getElementById('lcd_d5_pin').value,
-                'lcd_d6_pin': document.getElementById('lcd_d6_pin').value,
-                'lcd_d7_pin': document.getElementById('lcd_d7_pin').value
+                'aliases': document.getElementById('aliases').value
             }
             xmlDoc.open("POST", "api/params_save?d=" + new Date().getTime(), true);
             xmlDoc.setRequestHeader('Content-type', 'application/json');
@@ -245,12 +234,12 @@
         }
 
         function reboot() {
-            if(confirm("Czy zrestartować kontroler pieca?")) {
+            if (confirm("Czy zrestartować kontroler pieca?")) {
                 var xmlDoc = new XMLHttpRequest();
                 xmlDoc.onload = function (data) {
                     var dane = JSON.parse(data.target.responseText);
                     alert(dane['response']);
-                    document.location.href="/";
+                    document.location.href = "/";
                 };
 
                 xmlDoc.open("POST", "api/reboot?d=" + new Date().getTime(), true);
@@ -339,15 +328,9 @@
             <div class="label">Termometr: <input type="number" id="thermometer_pin"></div>
             <div class="label">Servo: <input type="number" id="servo_pin"></div>
             <div class="label">Wyświetlacz: <input type="number" id="display_pin"></div>
-            <div class="label">LCD GPIO: <input type="number" id="lcd_enable_pin"></div>
-            <div class="label">LCD RS: <input type="number" id="lcd_rs_pin"></div>
-            <div class="label">LCD D4: <input type="number" id="lcd_d4_pin"></div>
-            <div class="label">LCD D5: <input type="number" id="lcd_d5_pin"></div>
-            <div class="label">LCD D6: <input type="number" id="lcd_d6_pin"></div>
-            <div class="label">LCD D7: <input type="number" id="lcd_d7_pin"></div>
             <div class="label">LCD SDA: <input type="number" id="lcd_sda_pin"></div>
             <div class="label">LCD SCL: <input type="number" id="lcd_scl_pin"></div>
-            <div class="label">wygaszenie LCD [min]: <input type="number" id="lcd_backlight"></div>
+            <div class="label">Wygaszenie LCD [min]: <input type="number" id="lcd_backlight"></div>
         </div>
 
         <div class="section"><span>Pozostałe</span></div>
@@ -355,6 +338,9 @@
             <div class="label">Synchronizacja czasu: <input type="checkbox" id="ntp_enabled"></div>
             <div class="label">Adres serwera czasu: <input type="text" id="ntp_server"></div>
             <div class="label">Nazwa hosta: <input type="text" id="hostname"></div>
+            <div class="label">Termometry zdalne:
+                <textarea rows="5" id="aliases"></textarea>
+            </div>
         </div>
 
         <div class="inner-wrap">
@@ -367,12 +353,16 @@
                 </span>
                 <span class="align">ZAPISZ</span>
             </button>
-            <button class="clearbtn"><a href="/">Wstecz</a></button>
-
+            <button class="clearbtn"><a href="/"><span class="align" style="height: 22px">
+                   Wstecz
+            </span>
+            </a>
+            </button>
             <button onclick="reboot()" class="clearbtn" id="restart">
                 <span class="align" style="height: 22px">
                     <svg class="svgimg" viewBox="0 0 24 24">
-                        <path fill="currentColor" d="M12,4C14.1,4 16.1,4.8 17.6,6.3C20.7,9.4 20.7,14.5 17.6,17.6C15.8,19.5 13.3,20.2 10.9,19.9L11.4,17.9C13.1,18.1 14.9,17.5 16.2,16.2C18.5,13.9 18.5,10.1 16.2,7.7C15.1,6.6 13.5,6 12,6V10.6L7,5.6L12,0.6V4M6.3,17.6C3.7,15 3.3,11 5.1,7.9L6.6,9.4C5.5,11.6 5.9,14.4 7.8,16.2C8.3,16.7 8.9,17.1 9.6,17.4L9,19.4C8,19 7.1,18.4 6.3,17.6Z" />
+                        <path fill="currentColor"
+                              d="M12,4C14.1,4 16.1,4.8 17.6,6.3C20.7,9.4 20.7,14.5 17.6,17.6C15.8,19.5 13.3,20.2 10.9,19.9L11.4,17.9C13.1,18.1 14.9,17.5 16.2,16.2C18.5,13.9 18.5,10.1 16.2,7.7C15.1,6.6 13.5,6 12,6V10.6L7,5.6L12,0.6V4M6.3,17.6C3.7,15 3.3,11 5.1,7.9L6.6,9.4C5.5,11.6 5.9,14.4 7.8,16.2C8.3,16.7 8.9,17.1 9.6,17.4L9,19.4C8,19 7.1,18.4 6.3,17.6Z"/>
                     </svg>
                 </span>
                 <span class="align">Restart</span>

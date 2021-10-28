@@ -50,12 +50,14 @@ def save_config():
 
 
 def set_config(name, value, save=True):
+    global config
     config[name] = value
     if save:
         save_config()
 
 
 def get_config(name, defval=None):
+    global config
     if name in config.keys():
         return config[name]
     else:
@@ -63,8 +65,8 @@ def get_config(name, defval=None):
 
 
 def update_config(cfg):
-    p = json.loads(cfg)
-    config.update(p)
+    global config
+    config.update(cfg)
     save_config()
 
 
@@ -85,6 +87,7 @@ def select_best_ap():
 
 def wifi_connect():
     global curr_bssid
+    bssid = ""
     sta_if = network.WLAN(network.STA_IF)
     ap_if = network.WLAN(network.AP_IF)
 
@@ -194,13 +197,10 @@ def czas(date=True, time=True, sec=False):
 
 def dst_time():
     year = utime.localtime()[0]  # get current year
-    print(year)
     HHMarch = utime.mktime(
         (year, 3, (31 - (int(5 * year / 4 + 1)) % 7), 1, 0, 0, 0, 0, 0))  # Time of March change to DST
     HHNovember = utime.mktime(
         (year, 10, (31 - (int(5 * year / 4 + 1)) % 7), 1, 0, 0, 0, 0, 0))  # Time of October change to EST
-    print(HHMarch)
-    print(HHNovember)
     now = utime.time()
     delta = 1 * 3600
     if now < HHMarch:  # we are before last sunday of march
@@ -209,7 +209,6 @@ def dst_time():
         delta = 2 * 3600
     else:  # we are after last sunday of october
         delta = 1 * 3600
-    print(delta)
     dst = utime.localtime(now + delta)
     return dst
 
@@ -301,8 +300,8 @@ async def remove_hist(file):
 
 
 def get_data():
-    dane = {"czas": czas(), "termometr": 0, "temperatura": int(get_config('piec_temperatura', 40)),
-            "ostatnia_zmiana": get_config('piec_ostatnia_aktualizacja', '')}
+    dane = {"czas": czas(), "termometr": 0, "temperatura": int(get_config("piec_temperatura", 40)),
+            "ostatnia_zmiana": get_config("piec_ostatnia_aktualizacja", "")}
 
     fs_stat = os.statvfs(os.getcwd())
     fs_size = fs_stat[0] * fs_stat[2]
@@ -316,7 +315,9 @@ def get_data():
     times = get_config('piec_czasy', {})
     tm = ''
     for t in sorted(times):
-        tm += t + ' - ' + str(times[t]) + '\n'
+        if tm != "":
+            tm += "\n"
+        tm += t + " - " + str(times[t])
 
     dane["harmonogram"] = tm
 

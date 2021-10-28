@@ -1,5 +1,5 @@
 import utime
-from machine import Pin, SPI, PWM, ADC, SoftI2C
+from machine import Pin, PWM, ADC, SoftI2C
 import utils
 import sys
 
@@ -15,40 +15,12 @@ class Devices:
         self.button = None
         self.thermometer = None
 
-
         if int(utils.get_config("servo_pin", -1)) > -1:
             self.servo_pin = Pin(int(utils.get_config("servo_pin", 4)))
             self.servo = PWM(self.servo_pin, freq=50)
             self.servo.duty(20)
             self.servo.duty(utils.map_temp_to_servo(int(utils.get_config("piec_temperatura", 40))))
             del self.servo
-
-        if int(utils.get_config("display_pin", -1)) > -1:
-            import max7219
-
-            if sys.platform == 'esp32':
-                self.spi = SPI(1, baudrate=10000000, polarity=1, phase=0, sck=Pin(14), mosi=Pin(13))
-            else:
-                self.spi = SPI(1, baudrate=10000000, polarity=0, phase=0)
-
-            self.display_pin = Pin(int(utils.get_config("display_pin", 15)), Pin.OUT)
-            self.display = max7219.Matrix8x8(self.spi, self.display_pin, 1)
-            self.display.brightness(0)
-            self.display.fill(0)
-            self.display.show()
-
-        if int(utils.get_config("lcd_enable_pin", -1)) > -1:
-            from esp32_gpio_lcd import GpioLcd
-            self.lcd = GpioLcd(rs_pin=Pin(int(utils.get_config("lcd_rs_pin", 23))),
-                               enable_pin=Pin(int(utils.get_config("lcd_enable_pin", 19))),
-                               d4_pin=Pin(int(utils.get_config("lcd_d4_pin", 5))),
-                               d5_pin=Pin(int(utils.get_config("lcd_d5_pin", 18))),
-                               d6_pin=Pin(int(utils.get_config("lcd_d6_pin", 21))),
-                               d7_pin=Pin(int(utils.get_config("lcd_d7_pin", 22))),
-                               num_lines=2, num_columns=16)
-            self.lcd_wifi_chars(self.lcd)
-            self.lcd.hide_cursor()
-            self.lcd.clear()
 
         if int(utils.get_config("lcd_sda_pin", -1)) > -1:
             from esp8266_i2c_lcd import I2cLcd
@@ -64,14 +36,14 @@ class Devices:
         if int(utils.get_config("button_pin", -1)) > -1:
             self.button = Pin(int(utils.get_config("button_pin", 5)), Pin.IN, Pin.PULL_UP)
         if int(utils.get_config("adc_pin", -1)) > -1:
-            if sys.platform == 'esp8266':
+            if sys.platform == "esp8266":
                 self.adc = ADC(int(utils.get_config("adc_pin", 0)))
-            elif sys.platform == 'esp32':
+            elif sys.platform == "esp32":
                 self.adc = ADC(Pin(int(utils.get_config("adc_pin", 2))))
                 self.adc.atten(ADC.ATTN_11DB)
                 self.adc.width(ADC.WIDTH_10BIT)
 
-        if int(utils.get_config('thermometer_pin', -1)) > -1:
+        if int(utils.get_config("thermometer_pin", -1)) > -1:
             import sensors
             self.thermometer = sensors.Sensory()
 
@@ -176,5 +148,5 @@ class Devices:
 
     def lcd_light_tick(self):
         self.lcd_light += 1
-        if self.lcd_light > 120 * int(utils.get_config('lcd_backlight', 2)):
+        if self.lcd_light > 120 * int(utils.get_config("lcd_backlight", 2)):
             self.lcd_backlight(-1)

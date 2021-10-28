@@ -56,7 +56,7 @@ class Piec:
         utils.set_config("piec_temperatura", int(new_temp))
         if zapisz is True and utils.get_config("piec_historia_temperatury", True) is True:
             if utils.dst_time()[0] > 2000:
-                await utils.save_to_hist(new_temp, 'piec.hist')
+                await utils.save_to_hist(new_temp, "piec.hist")
 
         await uasyncio.sleep_ms(150)
 
@@ -65,11 +65,10 @@ class Piec:
 
     def save_times(self, times):
         tms = {}
-        while times != '':
-            r = times[0:10]
+        for r in times.split("\n"):
             if r != '':
-                key = r.split(' - ')[0]
-                val = r.split(' - ')[1]
+                key = r.split(" - ")[0]
+                val = r.split(" - ")[1]
                 tms[key] = int(val)
             times = times[10:]
         utils.set_config("piec_czasy", tms)

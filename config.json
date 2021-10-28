@@ -23,6 +23,7 @@
     "10:00": 40,
     "22:00": 40
   },
+  "aliases": {"t1": "Test"},
   "piec_ostatnia_aktualizacja": "2020-12-20 12:45",
   "piec_historia_termometru": true,
   "piec_historia_temperatury": true,

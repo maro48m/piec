@@ -125,7 +125,7 @@
     </style>
 
     <script>
-        var chartfile = 'termo';
+        var chart_data = 0;
 
         function loadData(recur) {
             var xmlDoc = new XMLHttpRequest();
@@ -155,8 +155,7 @@
                 document.getElementById('rssi').innerHTML = dane['rssi'];
 
                 document.getElementById("savebtn").disabled = false;
-                chart.updateSeries([{"name": "Termometr", "data": []}, {"name": "Piec", "data": []}])
-                loadChart();
+                loadSeries();
             } catch (e) {
                 loadData(0);
             }
@@ -167,21 +166,46 @@
             loadData(0);
         };
 
-        function loadChart() {
+        function loadSeries(){
             var xmlDoc = new XMLHttpRequest();
-            xmlDoc.onload = updateChart;
-            xmlDoc.open("GET", "/api/chart.json?d=" + new Date().getTime(), true);
+            xmlDoc.onload = updateSeries;
+            xmlDoc.open("GET", "/api/chart_series.json?d=" + new Date().getTime(), true);
             xmlDoc.send(null);
         }
+
+        function loadChart(file, i) {
+            var xmlDoc = new XMLHttpRequest();
+            xmlDoc.onload = updateChart;
+            xmlDoc.open("GET", "/api/chart.json?file="+file+"&d=" + new Date().getTime(), true);
+            xmlDoc.send(null);
+        }
+
+        function updateSeries(data){
+            if (data.target.responseText !== "") {
+                var serie = JSON.parse(data.target.responseText);
+                var s = serie["series"];
+                chart.updateSeries([{name: "BRAK", data: []}], true)
+                chart_data = 0;
+                for (let i = 0; i < s.length; i++) {
+                    loadChart(s[i], i);
+                }
+            }
+        }
+
 
         function updateChart(data) {
             try {
                 var dane = JSON.parse(data.target.responseText);
-                console.log(dane);
-                chart.appendData(dane);
+                if (chart_data === 0){
+                    console.log(dane)
+                    chart.updateSeries([dane], true)
+                    chart_data = 1
+                }
+                else {
+                    chart.appendSeries(dane, true);
+                }
             } catch (e) {
                 console.log(e)
-                loadChart();
             }
         }
 
@@ -418,7 +442,7 @@
         noData: {
             text: 'Wczytywanie...'
         },
-        colors:['#db6161','#77db61'],
+        colors:['#db6161','#dbbd61','#9edb61','#61db80','#61dbdb','#6180db'],
         xaxis: {
             type: 'datetime',
             xaxis: {
