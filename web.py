@@ -18,22 +18,9 @@ def handle_api(req, resp):
         dane["termometr"] = await termometr.pomiar_temperatury()
         del termometr
         yield from resp.awrite(json.dumps(dane).encode('utf-8'))
-
-    elif req.path.find("/api/clear/logs") > -1:
+    elif req.path.find("/api/clear_hist") > -1:
         yield from picoweb.start_response(resp, content_type='application/json')
-        await utils.remove_hist(4)
-        yield from resp.awrite('{"result":"Historia wyczyszczona"}'.encode('utf-8'))
-    elif req.path.find("/api/clear/hist_piec") > -1:
-        yield from picoweb.start_response(resp, content_type='application/json')
-        await utils.remove_hist(1)
-        yield from resp.awrite('{"result":"Historia wyczyszczona"}'.encode('utf-8'))
-    elif req.path.find("/api/clear/hist_termo") > -1:
-        yield from picoweb.start_response(resp, content_type='application/json')
-        await utils.remove_hist(2)
-        yield from resp.awrite('{"result":"Historia wyczyszczona"}'.encode('utf-8'))
-    elif req.path.find("/api/clear/all") > -1:
-        yield from picoweb.start_response(resp, content_type='application/json')
-        await utils.remove_hist(7)
+        await utils.remove_hist()
         yield from resp.awrite('{"result":"Historia wyczyszczona"}'.encode('utf-8'))
     elif req.path.find("/api/params_get.json") > -1:
         yield from picoweb.start_response(resp, content_type='application/json')
@@ -232,10 +219,7 @@ async def get_series_names(resp):
 
 ROUTES = [
     ("/", lambda req, resp: (yield from app.sendfile(resp, "index.html"))),
-    ("/hist/termo", lambda req, resp: (yield from app.sendfile(resp, "hist_termo.html"))),
-    ("/hist/piec", lambda req, resp: (yield from app.sendfile(resp, "hist_piec.html"))),
     ("/params", lambda req, resp: (yield from app.sendfile(resp, "params.html"))),
-    ("/logs", lambda req, resp: (yield from app.sendfile(resp, "logs.html"))),
     ("/save", save_piec),
     (re.compile("^/api/(.+)"), handle_api),
 ]

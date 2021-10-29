@@ -281,14 +281,13 @@ def unlock_file(file_name):
         print(err)
 
 
-async def remove_hist(file):
-    files = []
-    if file & 1:
-        files.append('piec.hist')
-    if file & 2:
-        files.append('termometr.hist')
-    if file & 4:
-        files.append('log.txt')
+async def remove_hist():
+    files = ['piec.hist', 'termometr.hist', 'log.txt']
+    aliases = get_config("aliases", {})
+    for alias in aliases:
+        fn = alias.split("=")[0]
+        if fn != "":
+            files.append(fn)
 
     for hf in files:
         try:

@@ -247,6 +247,20 @@
                 xmlDoc.send(null);
             }
         }
+        function clearHist(){
+            if (confirm("Czy wyczyścić całą historię odczytów?")) {
+                var xmlDoc = new XMLHttpRequest();
+                xmlDoc.onload = function (data) {
+                    var dane = JSON.parse(data.target.responseText);
+                    alert(dane['response']);
+                    document.location.href = "/";
+                };
+
+                xmlDoc.open("POST", "api/clear_hist?d=" + new Date().getTime(), true);
+                xmlDoc.setRequestHeader('Content-type', 'application/json');
+                xmlDoc.send(null);
+            }
+        }
 
     </script>
     <title>Kontrola pieca</title>
@@ -353,12 +367,7 @@
                 </span>
                 <span class="align">ZAPISZ</span>
             </button>
-            <button class="clearbtn"><a href="/"><span class="align" style="height: 22px">
-                   Wstecz
-            </span>
-            </a>
-            </button>
-            <button onclick="reboot()" class="clearbtn" id="restart">
+            <button onclick="reboot()" class="clearbtn" style="margin-left: 10px" id="restart">
                 <span class="align" style="height: 22px">
                     <svg class="svgimg" viewBox="0 0 24 24">
                         <path fill="currentColor"
@@ -366,6 +375,17 @@
                     </svg>
                 </span>
                 <span class="align">Restart</span>
+            </button>
+            <button onclick="clearHist()"  style="margin-left: 10px" id="clearhist">
+                <span class="align" style="height: 22px">
+                    <svg class="svgimg" viewBox="0 0 24 24">
+                        <path fill="currentColor"
+                              d="M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19M8.46,11.88L9.87,10.47L12,12.59L14.12,10.47L15.53,11.88L13.41,14L15.53,16.12L14.12,17.53L12,15.41L9.88,17.53L8.47,16.12L10.59,14L8.46,11.88M15.5,4L14.5,3H9.5L8.5,4H5V6H19V4H15.5Z"/>
+                    </svg>
+                </span>
+                <span class="align">Wyczyść historię</span>
+            </button>
+            <button style="margin-left: 10px;padding-top:6px; height: 60px"><a href="/">Wstecz</a>
             </button>
         </div>
     </form>
