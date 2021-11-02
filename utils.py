@@ -237,17 +237,21 @@ def log_message(message):
 
 
 async def save_to_hist(val, hist_file):
-    c = czas(True)
-    hf = hist_file
-    await lock_file(hist_file)
-    try:
-        with open(hf, 'a+') as ff:
-            ff.write('%s - %s\n' % (c, str(val)))
-            ff.close()
-    except Exception as jerr:
-        print(jerr)
+    (y, m, d, hh, mm, ss, wd, yd) = dst_time()
+    if y <= 2020:
+        return
 
-    unlock_file(hist_file)
+    c = czas(True)
+        hf = hist_file
+        await lock_file(hist_file)
+        try:
+            with open(hf, 'a+') as ff:
+                ff.write('%s - %s\n' % (c, str(val)))
+                ff.close()
+        except Exception as jerr:
+            print(jerr)
+
+        unlock_file(hist_file)
 
 
 def file_locked(file_name):
@@ -282,7 +286,7 @@ def unlock_file(file_name):
 
 
 async def remove_hist():
-    files = ['piec.hist', 'termometr.hist', 'log.txt']
+    files = ['piec.hist', 'termometr.hist']
     aliases = get_config("aliases", {})
     for alias in aliases:
         fn = alias.split("=")[0]
@@ -291,9 +295,9 @@ async def remove_hist():
 
     for hf in files:
         try:
-            await lock_file(hf)
-            os.remove(hf)
-            unlock_file(hf)
+                await lock_file(hf)
+                os.remove(hf)
+                unlock_file(hf)
         except Exception as err:
             print(err)
 

@@ -1,6 +1,5 @@
-#TODO: czyszczenie całej historii plików
+#TODO: usprawnić działanie webserwera!!
 import gc
-
 import utils
 import json
 import sensors
@@ -112,6 +111,7 @@ async def send_chart_data(req, writer):
     file_name = req.form["file"]
     aliases = utils.get_config("aliases", {})
     data_alias = ""
+    gc.collect(generation=2)
     if file_name == 'termometr.hist':
         termometr = sensors.Sensory()
         curr = await termometr.pomiar_temperatury()

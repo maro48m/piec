@@ -126,7 +126,7 @@
 
     <script>
         var chart_data = 0;
-
+        var chart_series = [];
         function loadData(recur) {
             var xmlDoc = new XMLHttpRequest();
             xmlDoc.onload = process;
@@ -188,7 +188,6 @@
                 chart_data = 0;
                 for (let i = 0; i < s.length; i++) {
                     loadChart(s[i], i);
-                }
             }
         }
 
@@ -199,10 +198,15 @@
                 if (chart_data === 0){
                     console.log(dane)
                     chart.updateSeries([dane], true)
-                    chart_data = 1
+
                 }
                 else {
                     chart.appendSeries(dane, true);
+                }
+                chart_data += 1;
+                console.log(chart_series,chart_data,chart_series.length);
+                if (chart_data < chart_series.length) {
+                    loadChart(chart_series[chart_data], chart_data);
                 }
             } catch (e) {
                 console.log(e)
