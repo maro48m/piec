@@ -1,5 +1,5 @@
 {
-  "wifi_ap_enabled": true,
+  "wifi_ap_enabled": false,
   "wifi_ap_ip": "192.168.23.1",
   "wifi_ap_passwd": "piec1234",
   "wifi_ap_ssid": "piec",
@@ -18,13 +18,15 @@
   "piec_temperatura_max": 90,
   "piec_temperatura_wg": 5,
   "piec_temperatura_wd": 2,
-  "piec_czasy": {
-    "06:30": 45,
-    "10:00": 40,
-    "22:00": 40
+  "piec_czasy": {},
+  "aliases": {
+    "t1": "Góra",
+    "t4": "Ogród",
+    "t3": "Dół",
+    "t2": "Korytarz"
   },
-  "aliases": {"t1": "Test"},
-  "piec_ostatnia_aktualizacja": "2020-12-20 12:45",
+  "alt": "t1=Góra\nt2=Korytarz\nt3=Dół\nt4=Ogród",
+  "piec_ostatnia_aktualizacja": "2021-11-01 18:26",
   "piec_historia_termometru": true,
   "piec_historia_temperatury": true,
   "piec_historia_termometru_czas": 5,
@@ -40,5 +42,6 @@
   "adc_pin": 32,
   "lcd_sda_pin": 21,
   "lcd_scl_pin": 18,
-  "lcd_backlight": 2
+  "lcd_backlight": 2,
+  "remote_hist_url": "http://192.168.0.40:5050/api"
 }

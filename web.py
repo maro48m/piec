@@ -1,28 +1,32 @@
-#TODO: usprawnić działanie webserwera!!
+# TODO: usprawnić działanie webserwera!!
 import gc
 import utils
 import json
 import sensors
 import ure as re
 import picoweb
+
 piec = None
 
 
 def handle_api(req, resp):
     print(req.path)
     if req.path.find("/api/dane.json") > -1:
-        yield from picoweb.start_response(resp, content_type='application/json')
+        yield from picoweb.start_response(resp, content_type='application/json',
+                                          headers={"Access-Control-Allow-Origin": "*"})
         termometr = sensors.Sensory()
         dane = utils.get_data()
         dane["termometr"] = await termometr.pomiar_temperatury()
         del termometr
         yield from resp.awrite(json.dumps(dane).encode('utf-8'))
     elif req.path.find("/api/clear_hist") > -1:
-        yield from picoweb.start_response(resp, content_type='application/json')
+        yield from picoweb.start_response(resp, content_type='application/json',
+                                          headers={"Access-Control-Allow-Origin": "*"})
         await utils.remove_hist()
         yield from resp.awrite('{"result":"Historia wyczyszczona"}'.encode('utf-8'))
     elif req.path.find("/api/params_get.json") > -1:
-        yield from picoweb.start_response(resp, content_type='application/json')
+        yield from picoweb.start_response(resp, content_type='application/json',
+                                          headers={"Access-Control-Allow-Origin": "*"})
         cfg = utils.config
         aliases = cfg["aliases"]
         alt = ''
@@ -34,21 +38,20 @@ def handle_api(req, resp):
         cfg["alt"] = alt
         yield from resp.awrite(json.dumps(cfg).encode('utf-8'))
     elif req.path.find("/api/params_save") > -1:
-        yield from picoweb.start_response(resp, content_type='application/json')
+        yield from picoweb.start_response(resp, content_type='application/json',
+                                          headers={"Access-Control-Allow-Origin": "*"})
         yield from save_params(req, resp)
-    elif req.path.find("/api/logs") > -1:
-        yield from app.sendfile(resp, 'log.txt', content_type='text/plain')
-    elif req.path.find("/api/hist_piec") > -1:
-        yield from app.sendfile(resp, 'piec.hist', content_type='text/plain')
-    elif req.path.find("/api/hist_termo") > -1:
-        yield from app.sendfile(resp, 'termometr.hist', content_type='text/plain')
     elif req.path.find("/api/chart.json") > -1:
-        yield from picoweb.start_response(resp, content_type='application/json')
+        yield from picoweb.start_response(resp, content_type='application/json',
+                                          headers={"Access-Control-Allow-Origin": "*"})
         yield from send_chart_data(req, resp)
     elif req.path.find("/api/chart_series.json") > -1:
-        yield from picoweb.start_response(resp, content_type='application/json')
+        yield from picoweb.start_response(resp, content_type='application/json',
+                                          headers={"Access-Control-Allow-Origin": "*"})
         yield from get_series_names(resp)
     elif req.path.find("/api/reboot") > -1:
+        yield from picoweb.start_response(resp, content_type='application/json',
+                                          headers={"Access-Control-Allow-Origin": "*"})
         yield from resp.awrite(
             '{"response":"Urządzenie się restartuje. Konieczne przeładowanie strony"}'.encode('utf-8'))
         yield from resp.aclose()
@@ -57,12 +60,16 @@ def handle_api(req, resp):
         import machine
         machine.reset()
     elif req.path.find("/api/remote_termo") > -1:
-        yield from picoweb.start_response(resp, content_type='application/json')
+        yield from picoweb.start_response(resp, content_type='application/json',
+                                          headers={"Access-Control-Allow-Origin": "*"})
         yield from save_remote_termo(req, resp)
+
     return True
 
 
 async def save_params(req, resp):
+    await picoweb.start_response(resp, content_type='application/json',
+                                 headers={"Access-Control-Allow-Origin": "*"})
     size = int(req.headers[b"Content-Length"])
     data = await req.reader.readexactly(size)
     data_txt = data.decode('utf-8')
@@ -80,6 +87,7 @@ async def save_params(req, resp):
     utils.update_config(params)
     res = {"result": "Dane zapisane"}
     await resp.awrite(json.dumps(res).encode('utf-8'))
+    await resp.drain()
 
 
 async def save_remote_termo(req, resp):
@@ -88,7 +96,9 @@ async def save_remote_termo(req, resp):
     name = req.form["name"]
     await utils.save_to_hist(temp, name)
     res = {"result": "Done"}
+    print(res)
     await resp.awrite(json.dumps(res).encode('utf-8'))
+    await resp.drain()
 
 
 def save_piec(req, resp):
@@ -96,6 +106,8 @@ def save_piec(req, resp):
     req.parse_qs()
     temp = int(req.form["temp"])
     times = req.form["times"]
+    yield from picoweb.start_response(resp, content_type='application/json',
+                                      headers={"Access-Control-Allow-Origin": "*"})
     if piec is not None:
         await piec.web_save(temp, times)
         res = {"result": "Dane zapisane", "times": times}
@@ -207,15 +219,18 @@ async def send_chart_data(req, writer):
 
 
 async def get_series_names(resp):
-    r = {"series": ["piec.hist", "termometr.hist"]}
+    r = {"series": [{"name": "piec.hist", "alias": "Piec - temperatura"},
+                    {"name": "termometr.hist", "alias": "Piec - termometr"}]}
     aliases = utils.get_config("aliases", {})
-    for alias in aliases:
-        fn = alias.split("=")[0]
+    print(aliases)
+    for fn in aliases:
+        fa = aliases[fn]
+        print(fn, fa)
         if fn != "":
-            r["series"].append(fn)
-
+            r["series"].append({"name": fn, "alias": fa})
+    print(r)
     await resp.awrite(json.dumps(r).encode('utf-8'))
-
+    await resp.drain()
 
 ROUTES = [
     ("/", lambda req, resp: (yield from app.sendfile(resp, "index.html"))),
@@ -225,6 +240,7 @@ ROUTES = [
 ]
 
 app = picoweb.WebApp(__name__, ROUTES)
+
 
 def start(p):
     global app

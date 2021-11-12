@@ -6,10 +6,12 @@ import os
 import gc
 import sys
 import uasyncio
+import urequests
 
 file_locks = {}
 config = {}
 curr_bssid = ""
+
 
 def val_map(x, in_min, in_max, out_min, out_max):
     return max(min(out_max, (x - in_min) * (out_max - out_min) // (in_max - in_min) + out_min), out_min)
@@ -213,7 +215,7 @@ def dst_time():
     return dst
 
 
-def log_exception(exception, log_level=1, save_to_file=True):
+def log_exception(exception, log_level=1, save_to_file=False):
     print(czas(True))
     if log_level < 1:
         return
@@ -242,16 +244,25 @@ async def save_to_hist(val, hist_file):
         return
 
     c = czas(True)
-        hf = hist_file
-        await lock_file(hist_file)
+    if get_config("remote_hist_url", "") != "":
         try:
-            with open(hf, 'a+') as ff:
-                ff.write('%s - %s\n' % (c, str(val)))
-                ff.close()
-        except Exception as jerr:
-            print(jerr)
+            url = "%s/hist?date=%s&val=%s&file=%s" % (
+                get_config("remote_hist_url", ""), quote(c), quote(str(val)), quote(hist_file))
+            resp = urequests.get(url)
+            resp.close()
+        except Exception as err:
+            sys.print_exception(err)
 
-        unlock_file(hist_file)
+    hf = hist_file
+    await lock_file(hist_file)
+    try:
+        with open(hf, 'a+') as ff:
+            ff.write('%s - %s\n' % (c, str(val)))
+            ff.close()
+    except Exception as jerr:
+        print(jerr)
+
+    unlock_file(hist_file)
 
 
 def file_locked(file_name):
@@ -295,9 +306,17 @@ async def remove_hist():
 
     for hf in files:
         try:
-                await lock_file(hf)
-                os.remove(hf)
-                unlock_file(hf)
+            if get_config("remote_hist_url", "") != "":
+                try:
+                    url = "%s/remove_hist?file=%s" % (get_config("remote_hist_url", ""), hf)
+                    resp = urequests.get(url)
+                    resp.close()
+                except Exception as uer:
+                    sys.print_exception(uer)
+
+            await lock_file(hf)
+            os.remove(hf)
+            unlock_file(hf)
         except Exception as err:
             print(err)
 
@@ -325,3 +344,17 @@ def get_data():
     dane["harmonogram"] = tm
 
     return dane
+
+
+def quote(s):
+    res = []
+    replacements = {}
+    always_safe = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+                   'abcdefghijklmnopqrstuvwxyz'
+                   '0123456789' '_.-')
+    for c in s:
+        if c in always_safe:
+            res.append(c)
+            continue
+        res.append('%%%x' % ord(c))
+    return ''.join(res)

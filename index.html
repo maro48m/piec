@@ -180,14 +180,14 @@
             xmlDoc.send(null);
         }
 
-        function updateSeries(data){
+        function updateSeries(data) {
             if (data.target.responseText !== "") {
                 var serie = JSON.parse(data.target.responseText);
                 var s = serie["series"];
                 chart.updateSeries([{name: "BRAK", data: []}], true)
                 chart_data = 0;
-                for (let i = 0; i < s.length; i++) {
-                    loadChart(s[i], i);
+                chart_series = s;
+                loadChart(chart_series[chart_data]["name"], chart_data);
             }
         }
 
