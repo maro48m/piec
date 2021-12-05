@@ -65,12 +65,15 @@ class Piec:
 
     def save_times(self, times):
         tms = {}
-        for r in times.split("\n"):
+        print('save times', times)
+        while times != '':
+            r = times[0:10]
+            times = times[10:]
             if r != '':
                 key = r.split(" - ")[0]
                 val = r.split(" - ")[1]
                 tms[key] = int(val)
-            times = times[10:]
+        print('save times done', tms)
         utils.set_config("piec_czasy", tms)
         del tms
 

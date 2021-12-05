@@ -1,4 +1,3 @@
-# TODO: usprawnić działanie webserwera!!
 import gc
 import utils
 import json
@@ -106,13 +105,17 @@ def save_piec(req, resp):
     req.parse_qs()
     temp = int(req.form["temp"])
     times = req.form["times"]
+    print(times)
     yield from picoweb.start_response(resp, content_type='application/json',
                                       headers={"Access-Control-Allow-Origin": "*"})
+    print(piec)
     if piec is not None:
         await piec.web_save(temp, times)
+        print('ws')
         res = {"result": "Dane zapisane", "times": times}
         yield from resp.awrite(json.dumps(res).encode('utf-8'))
     else:
+        print('now')
         yield from resp.awrite('{"result":"Błąd zapisu"}'.encode('utf-8'))
 
 
@@ -231,6 +234,7 @@ async def get_series_names(resp):
     print(r)
     await resp.awrite(json.dumps(r).encode('utf-8'))
     await resp.drain()
+
 
 ROUTES = [
     ("/", lambda req, resp: (yield from app.sendfile(resp, "index.html"))),
