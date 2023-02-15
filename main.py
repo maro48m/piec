@@ -183,7 +183,11 @@ class Piec:
         while 1:
             # utils.log_message('HANDLE WIFI')
             # if utils.wifi_connected() is False:
-            utils.wifi_connect()
+            try:
+                utils.wifi_connect()
+            except Exception as err:
+                pass
+
             await uasyncio.sleep(30)
 
     async def handle_display(self):
@@ -377,5 +381,6 @@ class Piec:
 utils.load_config()
 utils.wifi_disconnect()
 
-p = Piec()
-p.run()
+while True:
+    p = Piec()
+    p.run()
