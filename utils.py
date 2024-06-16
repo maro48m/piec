@@ -199,15 +199,15 @@ def czas(date=True, time=True, sec=False):
 
 def dst_time():
     year = utime.localtime()[0]  # get current year
-    HHMarch = utime.mktime(
+    march = utime.mktime(
         (year, 3, (31 - (int(5 * year / 4 + 1)) % 7), 1, 0, 0, 0, 0, 0))  # Time of March change to DST
-    HHNovember = utime.mktime(
+    november = utime.mktime(
         (year, 10, (31 - (int(5 * year / 4 + 1)) % 7), 1, 0, 0, 0, 0, 0))  # Time of October change to EST
     now = utime.time()
     delta = 1 * 3600
-    if now < HHMarch:  # we are before last sunday of march
+    if now < march:  # we are before last sunday of march
         delta = 1 * 3600
-    elif now < HHNovember:  # we are before last sunday of october
+    elif now < november:  # we are before last sunday of october
         delta = 2 * 3600
     else:  # we are after last sunday of october
         delta = 1 * 3600
@@ -252,17 +252,17 @@ async def save_to_hist(val, hist_file):
             resp.close()
         except Exception as err:
             sys.print_exception(err)
+    if False:
+        hf = hist_file
+        await lock_file(hist_file)
+        try:
+            with open(hf, 'a+') as ff:
+                ff.write('%s - %s\n' % (c, str(val)))
+                ff.close()
+        except Exception as jerr:
+            print(jerr)
 
-    hf = hist_file
-    await lock_file(hist_file)
-    try:
-        with open(hf, 'a+') as ff:
-            ff.write('%s - %s\n' % (c, str(val)))
-            ff.close()
-    except Exception as jerr:
-        print(jerr)
-
-    unlock_file(hist_file)
+        unlock_file(hist_file)
 
 
 def file_locked(file_name):

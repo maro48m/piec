@@ -13,6 +13,7 @@ def handle_api(req, resp):
     if req.path.find("/api/dane.json") > -1:
         yield from picoweb.start_response(resp, content_type='application/json',
                                           headers={"Access-Control-Allow-Origin": "*"})
+        print(1)
         termometr = sensors.Sensory()
         dane = utils.get_data()
         dane["termometr"] = await termometr.pomiar_temperatury()
@@ -21,7 +22,7 @@ def handle_api(req, resp):
     elif req.path.find("/api/clear_hist") > -1:
         yield from picoweb.start_response(resp, content_type='application/json',
                                           headers={"Access-Control-Allow-Origin": "*"})
-        await utils.remove_hist()
+        yield utils.remove_hist()
         yield from resp.awrite('{"result":"Historia wyczyszczona"}'.encode('utf-8'))
     elif req.path.find("/api/params_get.json") > -1:
         yield from picoweb.start_response(resp, content_type='application/json',
@@ -40,6 +41,14 @@ def handle_api(req, resp):
         yield from picoweb.start_response(resp, content_type='application/json',
                                           headers={"Access-Control-Allow-Origin": "*"})
         yield from save_params(req, resp)
+    elif req.path.find("/api/piec.hist") > -1:
+        yield from picoweb.start_response(resp, content_type='text/plain',
+                                          headers={"Access-Control-Allow-Origin": "*"})
+        yield from send_hist(req, resp,'piec.hist')
+    elif req.path.find("/api/termo.hist") > -1:
+        yield from picoweb.start_response(resp, content_type='text/plain',
+                                          headers={"Access-Control-Allow-Origin": "*"})
+        yield from send_hist(req, resp,'termometr.hist')
     elif req.path.find("/api/chart.json") > -1:
         yield from picoweb.start_response(resp, content_type='application/json',
                                           headers={"Access-Control-Allow-Origin": "*"})
@@ -55,7 +64,7 @@ def handle_api(req, resp):
             '{"response":"Urządzenie się restartuje. Konieczne przeładowanie strony"}'.encode('utf-8'))
         yield from resp.aclose()
         import uasyncio
-        await uasyncio.sleep_ms(500)
+        yield uasyncio.sleep_ms(500)
         import machine
         machine.reset()
     elif req.path.find("/api/remote_termo") > -1:
@@ -220,6 +229,22 @@ async def send_chart_data(req, writer):
     print('f')
     utils.unlock_file(file_name)
 
+
+async def send_hist(req, resp, hf):
+    await utils.lock_file(hf)
+    with open(hf, 'r') as fi:
+        c = 0
+        data = ""
+        while 1:
+            buf = fi.read(128)
+            if str(buf) == '':
+                break
+            else:
+                await resp.awrite(buf.encode('utf-8'))
+                await resp.drain()
+        fi.close()
+
+    utils.unlock_file(hf)
 
 async def get_series_names(resp):
     r = {"series": [{"name": "piec.hist", "alias": "Piec - temperatura"},
