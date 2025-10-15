@@ -1,3 +1,5 @@
+import gc
+
 import utils
 import devices
 import uasyncio
@@ -6,21 +8,15 @@ import utime
 
 class Piec:
     def __init__(self):
+        self.STATES = {'SLEEP': 0, 'DISPLAY': 1, 'EDIT': 2}
+        self.DEFAULT_TEMP = 40
+        self.state = self.STATES['DISPLAY']
+        self._init_state_vars()
+        
         self.devices = devices.Devices()
-
-        self.lh = -1
-        self.lm = -1
-        self.ltm = -1
-        self.lum = -1
-        self.time_update = 0
-        self.btn_val = 1
-        self.joy_val = 500
-        self.edit_temp = 0
-        self.state = 1  # 0-sleep, 1 - display, 2 - edit
-        self.disp_state = 0
-        self.lcd_state = 0
-        self.edit_state = 0
-        self.curr_temp = 0
+        self.curr_temp = 0       
+        self.devices.write_display(5, 0)
+        
 
         self.btn_task = None
         self.joy_task = None
@@ -30,38 +26,48 @@ class Piec:
         self.wifi_task = None
         self.lcd_task = None
         self.thermo_task = None
+        
+        
+    
+    def _init_state_vars(self):
+        """Initialize state variables with defaults to reduce memory allocation"""
+        self.lh = self.lm = self.ltm = self.lum = -1
+        self.time_update = 0
+        self.btn_val = 1
+        self.joy_val = 500
+        self.edit_temp = 0
+        self.disp_state = self.lcd_state = self.edit_state = 0
+        
+        self.state = self.STATES['DISPLAY']
+
+        
 
     async def set_temperature(self, new_temp, zapisz=True):
-        czas = utils.czas()
-        if zapisz is True and utils.get_config("piec_historia_temperatury", True) is True:
-            if utils.dst_time()[0] > 2000:
-                utils.set_config("piec_ostatnia_aktualizacja", czas, False)
-        curr_temp = int(utils.get_config("piec_temperatura"))
+        """Optimized temperature setting with improved error handling"""
+        try:
+            czas = utils.czas() if zapisz else None
+            curr_temp = int(utils.get_config("piec_temperatura"))
+            temp_max = int(utils.get_config("piec_temperatura_max", 90))
+            temp_min = int(utils.get_config("piec_temperatura_min", 30))
+            temp_wg = int(utils.get_config("piec_temperatura_wg", 5))
+            temp_wd = int(utils.get_config("piec_temperatura_wd", 2))
 
-        if curr_temp < new_temp <= (
-                int(utils.get_config("piec_temperatura_max", 90)) - int(utils.get_config("piec_temperatura_wg", 5))):
-            set_temp = new_temp + int(utils.get_config("piec_temperatura_wg", 5))
-            await self.devices.move_servo(utils.map_temp_to_servo(set_temp))
+            # Validate temperature range
+            if not temp_min <= new_temp <= temp_max:
+                return False
 
-            await uasyncio.sleep_ms(1000)
+            # Optimize servo movement logic
+            if curr_temp < new_temp <= (temp_max - temp_wg):
+                await self._move_servo_with_adjustment(new_temp + temp_wg)
+            elif curr_temp > new_temp >= (temp_min + temp_wd):
+                await self._move_servo_with_adjustment(new_temp - temp_wd)
 
-        elif curr_temp > new_temp >= (
-                int(utils.get_config("piec_temperatura_min", 30)) + int(utils.get_config("piec_temperatura_wd", 2))):
-            set_temp = new_temp - int(utils.get_config("piec_temperatura_wd", 2))
-            await self.devices.move_servo(utils.map_temp_to_servo(set_temp))
-
-            await uasyncio.sleep_ms(1000)
-
-        await self.devices.move_servo(utils.map_temp_to_servo(new_temp))
-        utils.set_config("piec_temperatura", int(new_temp))
-        if zapisz is True and utils.get_config("piec_historia_temperatury", True) is True:
-            if utils.dst_time()[0] > 2000:
-                await utils.save_to_hist(new_temp, "piec.hist")
-
-        await uasyncio.sleep_ms(150)
-
-        # if self.state > 0:
-        #     self.devices.led_write_number(new_temp)
+            await self._finalize_temp_setting(new_temp, zapisz, czas)
+            return True
+            
+        except Exception as e:
+            print(f"Error setting temperature: {e}")
+            return False
 
     def save_times(self, times):
         tms = {}
@@ -144,40 +150,67 @@ class Piec:
             else:
                 await uasyncio.sleep_ms(500)
 
+    async def _move_servo_with_adjustment(self, temp):
+        """Helper method for servo movement with delay"""
+        await self.devices.move_servo(utils.map_temp_to_servo(temp))
+        await uasyncio.sleep_ms(1000)
+
+    async def _finalize_temp_setting(self, temp, zapisz, czas):
+        """Helper method to finalize temperature setting"""
+        await self.devices.move_servo(utils.map_temp_to_servo(temp))
+        utils.set_config("piec_temperatura", int(temp))
+        
+        if zapisz and utils.get_config("piec_historia_temperatury", True):
+            if utils.dst_time()[0] > 2000:
+                utils.set_config("piec_ostatnia_aktualizacja", czas, False)
+                await utils.save_to_hist(temp, "piec.hist")
+
     async def handle_button(self):
-        while 1:
+        """Optimized button handler with state machine"""
+        while True:
             val = self.devices.button_value()
-            # utils.log_message('HANDLE BUTTON %d %d' % (val, self.btn_val))
+            
             if self.btn_val == 1 and val == 0:
                 if self.devices.lcd_light != -1:
-                    self.state += 1
-                    if self.state == 1:
-                        curr_temp = int(utils.get_config("piec_temperatura", 0))
-                        self.devices.led_write_number(curr_temp)
-                        self.devices.led_write_number(None, 2)
-                        self.devices.led_write_number(None, 3)
-                    if self.state == 2:
-                        self.lcd_state = 0
-                        self.edit_temp = int(utils.get_config("piec_temperatura", 0))
-                        self.devices.led_write_number(self.edit_temp)
-                        self.devices.led_write_number(None, 2)
-                        self.devices.led_write_number(None, 3)
-                    if self.state == 3:
-                        curr_temp = int(utils.get_config("piec_temperatura", 0))
-                        if self.edit_temp != curr_temp:
-                            await self.set_temperature(int(self.edit_temp))
-                            self.devices.led_write_number(self.edit_temp)
-                        self.edit_temp = 0
-                        self.devices.write_display(5, 0)
-
-                        self.lcd_state = 0
-                        self.disp_state = 0
-
-                        self.state = 1
+                    await self._handle_button_press()
                 self.devices.lcd_backlight(0)
 
             self.btn_val = val
             await uasyncio.sleep_ms(150)
+
+    async def _handle_button_press(self):
+        """Separate button press logic for clarity"""
+        self.state += 1
+        if self.state == self.STATES['DISPLAY']:
+            await self._update_display_state()
+        elif self.state == self.STATES['EDIT']:
+            await self._enter_edit_state()
+        elif self.state > self.STATES['EDIT']:
+            await self._save_edit_state()
+            self.state = self.STATES['DISPLAY']
+            
+    async def _update_display_state(self):
+        """Handle display state updates"""
+        curr_temp = int(utils.get_config("piec_temperatura", self.DEFAULT_TEMP))
+        self.devices.led_write_number(curr_temp)
+        self.devices.led_write_number(None, 2)
+        self.devices.led_write_number(None, 3)
+
+    async def _enter_edit_state(self):
+        """Initialize edit state"""
+        self.lcd_state = 0
+        self.edit_temp = int(utils.get_config("piec_temperatura", self.DEFAULT_TEMP))
+        self.devices.led_write_number(self.edit_temp)
+        self.devices.led_write_number(None, 2)
+        self.devices.led_write_number(None, 3)
+    
+    async def _save_edit_state(self):
+        """Save changes from edit state"""
+        curr_temp = int(utils.get_config("piec_temperatura", self.DEFAULT_TEMP))
+        if self.edit_temp != curr_temp:
+            await self.set_temperature(int(self.edit_temp))
+            self.devices.led_write_number(self.edit_temp)
+    
 
     async def handle_wifi(self):
         while 1:
@@ -346,10 +379,15 @@ class Piec:
                 ttt[dt] = tmp
             ntdt = [item for item in tdt if item >= cdt]
             closest = sorted(ntdt, key=lambda d: (d - cdt))[0]
-            (curr_y, curr_m, curr_d, curr_hh, curr_mm, curr_ss, curr_wd, curr_yd) = utime.localtime(closest)
+            (curr_y, curr_m, curr_d, curr_hh, curr_mm, curr_ss,
+             
+             
+             
+             curr_wd, curr_yd) = utime.localtime(closest)
             rt = "%02d:%02d" % (curr_hh, curr_mm)
             rp = ttt[closest]
         return rt, rp
+
 
     async def start_ftp(self):
         import uftpd
@@ -363,19 +401,38 @@ class Piec:
         await uasyncio.sleep_ms(500)
 
     def run(self):
+        """Optimized run method with improved task management"""
         loop = uasyncio.get_event_loop()
-        loop.create_task(self.set_temperature(int(utils.get_config("piec_temperatura", 40)), False))
-
-        self.timer_task = loop.create_task(self.handle_timer())
-        self.btn_task = loop.create_task(self.handle_button())
-        self.joy_task = loop.create_task(self.handle_joystick())
-        self.thermo_task = loop.create_task(self.handle_thermometer())
-        self.lcd_task = loop.create_task(self.handle_lcd())
-        self.display_task = loop.create_task(self.handle_display())
-        self.wifi_task = loop.create_task(self.handle_wifi())
-        loop.create_task(self.start_webserver())
-        loop.create_task(self.start_ftp())
+        
+        # Create task list for better management
+        tasks = [
+            self._create_task(self.set_temperature(int(utils.get_config("piec_temperatura", self.DEFAULT_TEMP)), False)),
+            self._create_task(self.handle_timer()),
+            self._create_task(self.handle_button()),
+            self._create_task(self.handle_joystick()),
+            self._create_task(self.handle_thermometer()),
+            self._create_task(self.handle_lcd()),
+            self._create_task(self.handle_display()),
+            self._create_task(self.handle_wifi()),
+            self._create_task(self.start_webserver()),
+            self._create_task(self.start_ftp())
+        ]
+        
+        # Schedule all tasks
+        for task in tasks:
+            loop.create_task(task)
+            
         loop.run_forever()
+
+    def _create_task(self, coro):
+        """Helper method to create tasks with error handling"""
+        async def wrapped_task():
+            try:
+                await coro
+            except Exception as e:
+                print(f"Task error: {e}")
+                gc.collect()
+        return wrapped_task()
 
 
 utils.load_config()
