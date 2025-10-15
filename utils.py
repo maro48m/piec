@@ -248,7 +248,7 @@ async def save_to_hist(val, hist_file):
         try:
             url = "%s/hist?date=%s&val=%s&file=%s" % (
                 get_config("remote_hist_url", ""), quote(c), quote(str(val)), quote(hist_file))
-            resp = urequests.get(url)
+            resp = urequests.get(url, timeout = 5)
             resp.close()
         except Exception as err:
             sys.print_exception(err)
@@ -291,7 +291,8 @@ def unlock_file(file_name):
     try:
         print('unlock', file_name)
         if file_name in file_locks.keys():
-            file_locks.pop(file_name, None)
+            lock = file_locks.pop(file_name, None)
+            lock.release()
     except Exception as err:
         print(err)
 
@@ -309,7 +310,7 @@ async def remove_hist():
             if get_config("remote_hist_url", "") != "":
                 try:
                     url = "%s/remove_hist?file=%s" % (get_config("remote_hist_url", ""), hf)
-                    resp = urequests.get(url)
+                    resp = urequests.get(url, timeout = 5)
                     resp.close()
                 except Exception as uer:
                     sys.print_exception(uer)

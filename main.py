@@ -215,11 +215,11 @@ class Piec:
     async def handle_wifi(self):
         while 1:
             # utils.log_message('HANDLE WIFI')
-            # if utils.wifi_connected() is False:
-            try:
-                utils.wifi_connect()
-            except Exception as err:
-                pass
+            if utils.wifi_connected() is False:
+                try:
+                    utils.wifi_connect()
+                except Exception as err:
+                    pass
 
             await uasyncio.sleep(30)
 
@@ -269,7 +269,7 @@ class Piec:
                         self.edit_state = 0
             except Exception as err:
                 pass
-            await uasyncio.sleep_ms(250)
+            await uasyncio.sleep_ms(500)
 
     async def handle_lcd(self):
         while 1:
@@ -341,6 +341,11 @@ class Piec:
         while 1:
             self.curr_temp = await self.devices.thermometer_value()
             await uasyncio.sleep_ms(500)
+    
+    async def handle_gc(self):
+        while 1:
+            gc.collect()
+            await uasyncio.sleep_ms(250)
 
     def find_next_temp(self):
         times = utils.get_config("piec_czasy", {})
@@ -415,7 +420,8 @@ class Piec:
             self._create_task(self.handle_display()),
             self._create_task(self.handle_wifi()),
             self._create_task(self.start_webserver()),
-            self._create_task(self.start_ftp())
+            self._create_task(self.start_ftp()),
+            self._create_task(self.handle_gc())
         ]
         
         # Schedule all tasks

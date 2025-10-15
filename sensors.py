@@ -52,7 +52,10 @@ class Sensory:
                 except Exception as err:
                     utils.log_exception(err)
 
-            temperature = temperature / (tc * 1.0)
+            if tc > 0:
+                temperature = temperature / (tc * 1.0)
+            else:
+                return 0
             if log_to_hist:
                 await utils.save_to_hist(temperature, 'termometr.hist')
         return temperature

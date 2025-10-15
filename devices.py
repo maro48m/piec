@@ -65,7 +65,9 @@ class Devices:
         if self.servo_pin is not None:
             self.servo = PWM(self.servo_pin, freq=50)
             self.servo.duty(val)
+            self.servo.deinit()
             del self.servo
+            self.servo = None
 
     def button_value(self):
         if self.button is not None:
